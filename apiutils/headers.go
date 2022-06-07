@@ -44,9 +44,6 @@ var (
 	SecureHeaders = SHM{
 		"X-Frame-Options":  "SAMEORIGIN",
 		"X-XSS-Protection": "1; mode=block",
-
-		"X-Content-Type-Options": "nosniff",
-
 		// IE security
 		"X-Download-Options": "noopen",
 
