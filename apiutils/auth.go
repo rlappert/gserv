@@ -2,13 +2,13 @@ package apiutils
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v4"
 	jwtReq "github.com/golang-jwt/jwt/v4/request"
 	"go.oneofone.dev/gserv"
+	"go.oneofone.dev/oerrs"
 )
 
 type (
@@ -69,8 +69,8 @@ const (
 )
 
 // errors
-var (
-	ErrNoAuthHeader = errors.New("missing Authorization: Bearer header is not set")
+const (
+	ErrNoAuthHeader = oerrs.String("missing Authorization: Bearer header is not set")
 )
 
 // DefaultAuth has the default values for Auth

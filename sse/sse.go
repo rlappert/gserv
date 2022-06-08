@@ -1,17 +1,14 @@
 package sse
 
 import (
-	"errors"
-	"net/http"
 	"sync"
 
 	"go.oneofone.dev/gserv"
+	"go.oneofone.dev/oerrs"
 )
 
-var (
-	RespNotAFlusher = gserv.NewJSONErrorResponse(http.StatusInternalServerError, ErrNotAFlusher)
-
-	ErrNoListener = errors.New("no registered listener")
+const (
+	ErrNoListener = oerrs.String("no registered listener")
 )
 
 type dataChan chan []byte

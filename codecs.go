@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/vmihailenco/msgpack/v5"
+	"go.oneofone.dev/genh"
 	"go.oneofone.dev/otk"
 )
 
@@ -55,7 +55,7 @@ func (PlainTextCodec) Decode(r io.Reader, out any) error {
 	case *[]byte:
 		*out = b
 	case io.Writer:
-		out.Write(b)
+		_, err = out.Write(b)
 	default:
 		return fmt.Errorf("%T is not a valid type for PlainTextCodec", out)
 	}
@@ -86,7 +86,7 @@ func (PlainTextCodec) Encode(w io.Writer, v any, err error) (err2 error) {
 	return
 }
 
-type JSONCodec struct{}
+type JSONCodec struct{ Indent bool }
 
 func (JSONCodec) ContentType() string { return MimeJSON }
 
@@ -94,16 +94,19 @@ func (JSONCodec) Decode(r io.Reader, out any) error {
 	return json.NewDecoder(r).Decode(&out)
 }
 
-func (JSONCodec) Encode(w io.Writer, v any, err error) error {
+func (j JSONCodec) Encode(w io.Writer, v any, err error) error {
 	enc := json.NewEncoder(w)
-	if err != nil {
-		err := getError(err)
-		if rw, ok := w.(http.ResponseWriter); ok {
-			rw.WriteHeader(err.Status())
-		}
-		return enc.Encode(err)
+	if j.Indent {
+		enc.SetIndent("", "\t")
 	}
-	return enc.Encode(v)
+	if err == nil {
+		return enc.Encode(v)
+	}
+	e := getError(err)
+	if rw, ok := w.(http.ResponseWriter); ok {
+		rw.WriteHeader(e.Status())
+	}
+	return enc.Encode(e)
 }
 
 type MsgpCodec struct{}
@@ -111,23 +114,19 @@ type MsgpCodec struct{}
 func (MsgpCodec) ContentType() string { return MimeJSON }
 
 func (MsgpCodec) Decode(r io.Reader, out any) error {
-	dec := GetMsgpDecoder(r)
-	defer msgpack.PutDecoder(dec)
-
-	return dec.Decode(&out)
+	return genh.DecodeMsgpack(r, out)
 }
 
 func (c MsgpCodec) Encode(w io.Writer, v any, err error) error {
-	enc := GetMsgpEncoder(w)
-	defer msgpack.PutEncoder(enc)
-	if err != nil {
-		err := getError(err)
-		if rw, ok := w.(http.ResponseWriter); ok {
-			rw.WriteHeader(err.Status())
-		}
-		return enc.Encode(err)
+	if err == nil {
+		return genh.EncodeMsgpack(w, v)
 	}
-	return enc.Encode(v)
+
+	e := getError(err)
+	if rw, ok := w.(http.ResponseWriter); ok {
+		rw.WriteHeader(e.Status())
+	}
+	return genh.EncodeMsgpack(w, e)
 }
 
 type MixedCodec[Dec, Enc Codec] struct {
@@ -150,20 +149,4 @@ func getError(err error) HTTPError {
 		return err
 	}
 	return &Error{Code: http.StatusBadRequest, Message: err.Error()}
-}
-
-func GetMsgpEncoder(w io.Writer) *msgpack.Encoder {
-	enc := msgpack.GetEncoder()
-	enc.Reset(w)
-	enc.SetCustomStructTag("json")
-	enc.UseCompactFloats(true)
-	enc.UseCompactFloats(true)
-	return enc
-}
-
-func GetMsgpDecoder(r io.Reader) *msgpack.Decoder {
-	dec := msgpack.GetDecoder()
-	dec.Reset(r)
-	dec.SetCustomStructTag("json")
-	return dec
 }

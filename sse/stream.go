@@ -2,7 +2,6 @@ package sse
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,12 +10,14 @@ import (
 
 	"go.oneofone.dev/gserv"
 	"go.oneofone.dev/gserv/internal"
+	"go.oneofone.dev/oerrs"
+)
+
+const (
+	ErrBufferFull = oerrs.String("buffer full")
 )
 
 var (
-	ErrBufferFull  = errors.New("buffer full")
-	ErrNotAFlusher = errors.New("ctx not a flusher")
-
 	nl        = []byte("\n")
 	idBytes   = []byte("id: ")
 	evtBytes  = []byte("event: ")
@@ -30,12 +31,6 @@ type writeFlusher interface {
 }
 
 func NewStream(ctx *gserv.Context, bufSize int) (lastEventID string, ss *Stream, err error) {
-	wf, ok := ctx.ResponseWriter.(writeFlusher)
-	if !ok {
-		err = ErrNotAFlusher
-		return
-	}
-
 	h := ctx.Header()
 	h.Set("Content-Type", "text/event-stream")
 	h.Set("Cache-Control", "no-cache")
@@ -46,7 +41,7 @@ func NewStream(ctx *gserv.Context, bufSize int) (lastEventID string, ss *Stream,
 	}
 	lastEventID = LastEventID(ctx)
 
-	go processStream(ss, wf)
+	go processStream(ss, ctx)
 
 	return
 }
@@ -93,16 +88,16 @@ func (ss *Stream) SendAll(id, evt string, msg any) error {
 	return ss.send(b)
 }
 
-func processStream(ss *Stream, wf writeFlusher) {
-	wf.Flush()
+func processStream(ss *Stream, ctx *gserv.Context) {
+	ctx.Flush()
 
 	for {
 		select {
 		case m := <-ss.wch:
-			if _, err := wf.Write(m); err != nil {
+			if _, err := ctx.Write(m); err != nil {
 				return
 			}
-			wf.Flush()
+			ctx.Flush()
 		case <-ss.done:
 			return
 		}

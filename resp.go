@@ -2,12 +2,12 @@ package gserv
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 
+	"go.oneofone.dev/oerrs"
 	"go.oneofone.dev/otk"
 )
 
@@ -86,7 +86,7 @@ func ReadJSONResponse(rc io.ReadCloser, dataValue any) (r *JSONResponse, err err
 	}
 
 	if err = me.Err(); err == nil {
-		err = errors.New(http.StatusText(r.Code))
+		err = oerrs.String(http.StatusText(r.Code))
 	}
 
 	return

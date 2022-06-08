@@ -2,7 +2,6 @@ package gserv
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -16,6 +15,7 @@ import (
 
 	"go.oneofone.dev/gserv/internal"
 	"go.oneofone.dev/gserv/router"
+	"go.oneofone.dev/oerrs"
 	"go.oneofone.dev/otk"
 )
 
@@ -25,18 +25,18 @@ var (
 	_ io.StringWriter     = (*Context)(nil)
 )
 
-var (
+const (
 	// ErrDir is Returned from ctx.File when the path is a directory not a file.
-	ErrDir = errors.New("file is a directory")
+	ErrDir = oerrs.String("file is a directory")
 
 	// ErrInvalidURL gets returned on invalid redirect urls.
-	ErrInvalidURL = errors.New("invalid redirect error")
+	ErrInvalidURL = oerrs.String("invalid redirect error")
 
 	// ErrEmptyCallback is returned when a callback is empty
-	ErrEmptyCallback = errors.New("empty callback")
+	ErrEmptyCallback = oerrs.String("empty callback")
 
 	// ErrEmptyData is returned when the data payload is empty
-	ErrEmptyData = errors.New("empty data")
+	ErrEmptyData = oerrs.String("empty data")
 )
 
 // Context is the default context passed to handlers
@@ -170,23 +170,24 @@ func (ctx *Context) Printf(code int, contentType, s string, args ...any) (int, e
 // calling this function marks the Context as done, meaning any returned responses won't be written out.
 func (ctx *Context) JSON(code int, indent bool, v any) error {
 	ctx.done = true
-	ctx.SetContentType(MimeJSON)
+	return ctx.Encode(code, JSONCodec{indent}, v)
+}
 
-	enc := json.NewEncoder(ctx)
+// Msgpack outputs a msgp object, it is highly recommended to return *Response rather than use this directly.
+// calling this function marks the Context as done, meaning any returned responses won't be written out.
+func (ctx *Context) Msgpack(code int, v any) error {
+	ctx.done = true
+	return ctx.Encode(code, MsgpCodec{}, v)
+}
 
-	if indent {
-		enc.SetIndent("", "\t")
-	}
+func (ctx *Context) Encode(code int, c Codec, v any) error {
+	ctx.done = true
+	ctx.SetContentType(c.ContentType())
 
 	if code > 0 {
 		ctx.WriteHeader(code)
 	}
-
-	err := enc.Encode(v)
-	if err != nil {
-		ctx.s.Logf("json error: %v", err)
-	}
-	return err
+	return c.Encode(ctx, v, nil)
 }
 
 // ClientIP returns the current client ip, accounting for X-Real-Ip and X-forwarded-For headers as well.
@@ -258,7 +259,6 @@ func (ctx *Context) Write(p []byte) (int, error) {
 	}
 
 	ctx.done = true
-
 	return ctx.ResponseWriter.Write(p)
 }
 
