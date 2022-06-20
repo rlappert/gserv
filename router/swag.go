@@ -24,12 +24,14 @@ type swaggerServer struct {
 type swaggerPath = map[string]map[string]*SwaggerRoute
 
 type SwaggerParam struct {
-	Name            string `json:"name,omitempty" yaml:"name,omitempty"`
-	In              string `json:"in,omitempty" yaml:"in,omitempty"`
-	Description     string `json:"description,omitempty" yaml:"description,omitempty"`
-	Required        bool   `json:"required,omitempty" yaml:"required,omitempty"`
-	Deprecated      bool   `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
-	AllowEmptyValue bool   `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
+	Name            string         `json:"name,omitempty" yaml:"name,omitempty"`
+	In              string         `json:"in,omitempty" yaml:"in,omitempty"`
+	Description     string         `json:"description,omitempty" yaml:"description,omitempty"`
+	Type            string         `json:"-" yaml:"-"`
+	Schema          map[string]any `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Required        bool           `json:"required,omitempty" yaml:"required,omitempty"`
+	Deprecated      bool           `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	AllowEmptyValue bool           `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
 }
 
 type SwaggerDesc struct {
@@ -50,6 +52,66 @@ type SwaggerRoute struct {
 	Examples  map[string]*SwaggerDesc `json:"examples,omitempty" yaml:"examples,omitempty"`
 }
 
+func (sr *SwaggerRoute) WithOperationID(v string) *SwaggerRoute {
+	sr.OperationID = v
+	return sr
+}
+
+func (sr *SwaggerRoute) WithSummary(v string) *SwaggerRoute {
+	sr.Summary = v
+	return sr
+}
+
+func (sr *SwaggerRoute) WithDescription(v string) *SwaggerRoute {
+	sr.Description = v
+	return sr
+}
+
+func (sr *SwaggerRoute) WithTags(v ...string) *SwaggerRoute {
+	sr.Tags = append(sr.Tags, v...)
+	return sr
+}
+
+func (sr *SwaggerRoute) WithResponse(name string, ex *SwaggerDesc) *SwaggerRoute {
+	if sr.Responses == nil {
+		sr.Responses = map[string]*SwaggerDesc{}
+	}
+	sr.Responses[name] = ex
+	return sr
+}
+
+func (sr *SwaggerRoute) WithExample(name string, ex *SwaggerDesc) *SwaggerRoute {
+	if sr.Examples == nil {
+		sr.Examples = map[string]*SwaggerDesc{}
+	}
+	sr.Examples[name] = ex
+	return sr
+}
+
+func (sr *SwaggerRoute) WithParams(params []*SwaggerParam) *SwaggerRoute {
+	sr.Parameters = append(sr.Parameters, params...)
+	return sr
+}
+
+func (sr *SwaggerRoute) WithParam(name, desc, in, typ string, required bool, schema map[string]any) *SwaggerRoute {
+	p := SwaggerParam{Name: name, Description: desc, In: in, Schema: schema, Required: required}
+	if p.In == "" {
+		p.In = "path"
+	}
+
+	if typ == "" {
+		typ = "string"
+	}
+
+	if p.Schema == nil {
+		p.Schema = map[string]any{}
+	}
+	p.Schema["type"] = typ
+
+	sr.Parameters = append(sr.Parameters, &p)
+	return sr
+}
+
 func (r *Router) addRouteInfo(method, path string, params []nodePart, desc *SwaggerRoute) {
 	p := r.swagger.Paths
 	if p == nil {
@@ -66,7 +128,7 @@ func (r *Router) addRouteInfo(method, path string, params []nodePart, desc *Swag
 	if desc == nil {
 		desc = &SwaggerRoute{}
 	}
-	if len(params) > 0 {
+	if desc.Parameters == nil {
 		desc.Parameters = make([]*SwaggerParam, 0, len(params))
 	L:
 		for _, p := range params {

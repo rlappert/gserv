@@ -8,7 +8,8 @@ import (
 )
 
 func TestRouter(t *testing.T) {
-	r := buildMeteoraAPIRouter(t, false)
+	r := buildAPIRouter(t, false)
+	r.opts.AutoGenerateSwagger = true
 	for _, m := range restAPIRoutes {
 		ep := m.url
 		req, _ := http.NewRequest("GET", ep, nil)
@@ -40,7 +41,7 @@ func TestRouterStar(t *testing.T) {
 
 func BenchmarkRouter5Params(b *testing.B) {
 	req, _ := http.NewRequest("GET", "/campaignReport/:id/:cid/:start-date/:end-date/:filename", nil)
-	r := buildMeteoraAPIRouter(b, false)
+	r := buildAPIRouter(b, false)
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -51,7 +52,7 @@ func BenchmarkRouter5Params(b *testing.B) {
 
 func BenchmarkRouterStatic(b *testing.B) {
 	req, _ := http.NewRequest("GET", "/dashboard", nil)
-	r := buildMeteoraAPIRouter(b, false)
+	r := buildAPIRouter(b, false)
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -60,7 +61,7 @@ func BenchmarkRouterStatic(b *testing.B) {
 	})
 }
 
-func buildMeteoraAPIRouter(l testing.TB, print bool) (r *Router) {
+func buildAPIRouter(l testing.TB, print bool) (r *Router) {
 	r = New(nil)
 	r.PanicHandler = nil
 	for _, m := range restAPIRoutes {
@@ -77,7 +78,9 @@ func buildMeteoraAPIRouter(l testing.TB, print bool) (r *Router) {
 				l.Logf("[%s] %s %q", req.Method, ep, p)
 			}
 		}
-		r.AddRoute("", "GET", ep, fn)
+
+		r.AddRoute("", "GET", ep, fn).WithDoc("this does stuff", true)
+
 		r.AddRoute("", "PATCH", ep, fn)
 	}
 	r.NotFoundHandler = func(_ http.ResponseWriter, req *http.Request, _ Params) {

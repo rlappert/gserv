@@ -7,6 +7,10 @@ import (
 	"go.oneofone.dev/gserv/router"
 )
 
+type (
+	Route = *router.Route
+)
+
 var DefaultCodec Codec = &JSONCodec{}
 
 // Handler is the default server Handler
@@ -33,43 +37,43 @@ func (g *Group) Routes() [][3]string {
 
 // AddRoute adds a handler (or more) to the specific method and path
 // it is NOT safe to call this once you call one of the run functions
-func (g *Group) AddRoute(method, path string, handlers ...Handler) {
+func (g *Group) AddRoute(method, path string, handlers ...Handler) Route {
 	ghc := groupHandlerChain{
 		hc: handlers,
 		g:  g,
 	}
 	p := joinPath(g.path, path)
-	g.s.r.AddRoute(g.nm, method, p, ghc.Serve)
+	return g.s.r.AddRoute(g.nm, method, p, ghc.Serve)
 }
 
 // GET is an alias for AddRoute("GET", path, handlers...).
-func (g *Group) GET(path string, handlers ...Handler) {
-	g.AddRoute(http.MethodGet, path, handlers...)
+func (g *Group) GET(path string, handlers ...Handler) Route {
+	return g.AddRoute(http.MethodGet, path, handlers...)
 }
 
 // PUT is an alias for AddRoute("PUT", path, handlers...).
-func (g *Group) PUT(path string, handlers ...Handler) {
-	g.AddRoute(http.MethodPut, path, handlers...)
+func (g *Group) PUT(path string, handlers ...Handler) Route {
+	return g.AddRoute(http.MethodPut, path, handlers...)
 }
 
 // POST is an alias for AddRoute("POST", path, handlers...).
-func (g *Group) POST(path string, handlers ...Handler) {
-	g.AddRoute(http.MethodPost, path, handlers...)
+func (g *Group) POST(path string, handlers ...Handler) Route {
+	return g.AddRoute(http.MethodPost, path, handlers...)
 }
 
 // DELETE is an alias for AddRoute("DELETE", path, handlers...).
-func (g *Group) DELETE(path string, handlers ...Handler) {
-	g.AddRoute(http.MethodDelete, path, handlers...)
+func (g *Group) DELETE(path string, handlers ...Handler) Route {
+	return g.AddRoute(http.MethodDelete, path, handlers...)
 }
 
-func (g *Group) Static(path, localPath string, allowListing bool) {
+func (g *Group) Static(path, localPath string, allowListing bool) Route {
 	path = strings.TrimSuffix(path, "/")
 
-	g.AddRoute(http.MethodGet, joinPath(path, "*fp"), StaticDirStd(path, localPath, allowListing))
+	return g.AddRoute(http.MethodGet, joinPath(path, "*fp"), StaticDirStd(path, localPath, allowListing))
 }
 
-func (g *Group) StaticFile(path, localPath string) {
-	g.AddRoute(http.MethodGet, path, func(ctx *Context) Response {
+func (g *Group) StaticFile(path, localPath string) Route {
+	return g.AddRoute(http.MethodGet, path, func(ctx *Context) Response {
 		ctx.File(localPath)
 		return nil
 	})

@@ -80,24 +80,13 @@ func (r GenResponse[CodecT]) WriteToCtx(ctx *Context) error {
 	var c CodecT
 	ctx.SetContentType(c.ContentType())
 
-	if !r.Success {
-		err := r.ErrorList()
-		ctx.WriteHeader(r.Code)
-		return c.Encode(ctx, nil, Error{Message: err.Error(), Code: r.Code})
-	}
-	return c.Encode(ctx, &r, nil)
+	return c.Encode(ctx, &r)
 }
 
 func (r GenResponse[CodecT]) Cached() Response {
-	var buf bytes.Buffer
 	var c CodecT
-	if !r.Success {
-		err := r.ErrorList()
-		oerrs.Try(c.Encode(&buf, nil, Error{Message: err.Error(), Code: r.Code}))
-	} else {
-		oerrs.Try(c.Encode(&buf, &r, nil)) // should never panic
-	}
-
+	var buf bytes.Buffer
+	oerrs.Try(c.Encode(&buf, r))
 	return &CachedResponse{ct: c.ContentType(), code: r.Status(), body: buf.Bytes()}
 }
 

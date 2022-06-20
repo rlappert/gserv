@@ -61,6 +61,14 @@ func (r *CachedResponse) WriteToCtx(ctx *Context) error {
 	return err
 }
 
+func (r *CachedResponse) MarshalJSON() ([]byte, error) {
+	return r.body, nil
+}
+
+func (r *CachedResponse) MarshalMsgPack() ([]byte, error) {
+	return r.body, nil
+}
+
 // ReadJSONResponse reads a response from an io.ReadCloser and closes the body.
 // dataValue is the data type you're expecting, for example:
 //

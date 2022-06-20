@@ -1,6 +1,7 @@
 package sse
 
 import (
+	"runtime"
 	"sync"
 
 	"go.oneofone.dev/gserv"
@@ -55,7 +56,7 @@ func (ms *multiStream) process() {
 
 func NewRouter() *Router {
 	return &Router{
-		mss: make(map[string]*multiStream, 8),
+		mss: make(map[string]*multiStream, runtime.NumCPU()),
 	}
 }
 
