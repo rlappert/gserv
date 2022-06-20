@@ -36,7 +36,7 @@ type Response interface {
 	WriteToCtx(ctx *Context) error
 }
 
-func PlainResponse(contentType, body string) Response {
+func PlainResponse(contentType string, body any) Response {
 	return CachedResponse(http.StatusOK, contentType, body)
 }
 
