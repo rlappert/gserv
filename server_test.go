@@ -63,6 +63,13 @@ func newServerAndWait(t *testing.T, addr string) *Server {
 	}
 }
 
+func TestErrors(t *testing.T) {
+	j, _ := json.Marshal(RespBadRequest)
+	if !strings.Contains(string(j), `"errors":[{"error":"Bad Request"}]`) {
+		t.Fatalf("bad marshal: %s", j)
+	}
+}
+
 func cmpData(a, b any) bool {
 	av, bv := a, b
 	if ab, ok := a.(*otk.Buffer); ok {
