@@ -122,7 +122,11 @@ func (ghc *groupHandlerChain) Serve(rw http.ResponseWriter, req *http.Request, p
 			h := ghc.g.mw[mwIdx]
 			mwIdx++
 			if r := h(ctx); r != nil {
-				r.WriteToCtx(ctx)
+				if r != Break {
+					r.WriteToCtx(ctx)
+				} else {
+					ctx.next = nil
+				}
 				break
 			}
 		}
@@ -134,7 +138,9 @@ func (ghc *groupHandlerChain) Serve(rw http.ResponseWriter, req *http.Request, p
 			h := ghc.hc[hIdx]
 			hIdx++
 			if r := h(ctx); r != nil {
-				r.WriteToCtx(ctx)
+				if r != Break {
+					r.WriteToCtx(ctx)
+				}
 				break
 			}
 		}

@@ -2,10 +2,10 @@ package gserv
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
-	"log"
+	"mime"
 	"net/http"
+	"path/filepath"
 
 	"go.oneofone.dev/oerrs"
 	"go.oneofone.dev/otk"
@@ -18,14 +18,14 @@ var (
 	RespForbidden        Response = NewJSONErrorResponse(http.StatusForbidden).Cached()
 	RespBadRequest       Response = NewJSONErrorResponse(http.StatusBadRequest).Cached()
 	RespOK               Response = NewJSONResponse("OK").Cached()
-	RespEmpty            Response = &CachedResponse{code: http.StatusNoContent}
-	RespPlainOK          Response = &CachedResponse{code: http.StatusOK, body: []byte("OK\n")}
+	RespEmpty            Response = CachedResponse(http.StatusNoContent, "", nil)
+	RespPlainOK          Response = CachedResponse(http.StatusOK, "", nil)
 	RespRedirectRoot     Response = Redirect("/", false)
 
 	// Break can be returned from a handler to break a handler chain.
 	// It doesn't write anything to the connection.
 	// if you reassign this, a wild animal will devour your face.
-	Break Response = &CachedResponse{code: -1}
+	Break Response = &cachedResp{code: -1}
 )
 
 // Response represents a generic return type for http responses.
@@ -34,23 +34,25 @@ type Response interface {
 	WriteToCtx(ctx *Context) error
 }
 
-func NewCachedResponse(v Response, fn func(v any) ([]byte, error)) Response {
-	b, err := fn(v)
-	if err != nil { // marshal function can never fail unless it's a system error
-		log.Panicf("marshal error: %v", err)
+func CachedResponse(code int, contentType string, body []byte) Response {
+	if body == nil && code != http.StatusNoContent {
+		body = []byte(http.StatusText(code))
 	}
-
-	return &CachedResponse{code: v.Status(), body: b}
+	return &cachedResp{
+		ct:   contentType,
+		body: body,
+		code: code,
+	}
 }
 
-type CachedResponse struct {
+type cachedResp struct {
 	ct   string
 	body []byte
 	code int
 }
 
-func (r *CachedResponse) Status() int { return r.code }
-func (r *CachedResponse) WriteToCtx(ctx *Context) error {
+func (r *cachedResp) Status() int { return r.code }
+func (r *cachedResp) WriteToCtx(ctx *Context) error {
 	if r.ct != "" {
 		ctx.SetContentType(r.ct)
 	}
@@ -61,13 +63,15 @@ func (r *CachedResponse) WriteToCtx(ctx *Context) error {
 	return err
 }
 
-func (r *CachedResponse) MarshalJSON() ([]byte, error) {
+func (r *cachedResp) MarshalJSON() ([]byte, error) {
 	return r.body, nil
 }
 
-func (r *CachedResponse) MarshalMsgPack() ([]byte, error) {
+func (r *cachedResp) MarshalMsgPack() ([]byte, error) {
 	return r.body, nil
 }
+
+func (r *cachedResp) Cached() Response { return r }
 
 // ReadJSONResponse reads a response from an io.ReadCloser and closes the body.
 // dataValue is the data type you're expecting, for example:
@@ -139,6 +143,9 @@ func (r redirResp) WriteToCtx(ctx *Context) error {
 // File returns a file response.
 // example: return File("plain/html", "index.html")
 func File(contentType, fp string) Response {
+	if contentType == "" {
+		contentType = mime.TypeByExtension(filepath.Ext(fp))
+	}
 	return fileResp{contentType, fp}
 }
 
@@ -153,50 +160,4 @@ func (f fileResp) WriteToCtx(ctx *Context) error {
 		ctx.SetContentType(f.ct)
 	}
 	return ctx.File(f.fp)
-}
-
-// PlainResponse returns SimpleResponse(200, contentType, val).
-func PlainResponse(contentType string, val any) Response {
-	return SimpleResponse(http.StatusOK, contentType, val)
-}
-
-// SimpleResponse is a QoL wrapper to return a response with the specified code and content-type.
-// val can be: nil, []byte, string, io.Writer, anything else will be written with fmt.Printf("%v").
-func SimpleResponse(code int, contentType string, val any) Response {
-	return &simpleResp{
-		ct:   contentType,
-		v:    val,
-		code: code,
-	}
-}
-
-type simpleResp struct {
-	v    any
-	ct   string
-	code int
-}
-
-func (r *simpleResp) Status() int { return r.code }
-func (r simpleResp) WriteToCtx(ctx *Context) error {
-	if r.ct != "" {
-		ctx.SetContentType(r.ct)
-	}
-
-	if r.code > 0 {
-		ctx.WriteHeader(r.code)
-	}
-
-	var err error
-	switch v := r.v.(type) {
-	case nil:
-	case []byte:
-		_, err = ctx.Write(v)
-	case string:
-		_, err = ctx.Write(otk.UnsafeBytes(v))
-	case io.Reader:
-		_, err = io.Copy(ctx, v)
-	default:
-		_, err = fmt.Fprintf(ctx, "%v", r.v)
-	}
-	return err
 }

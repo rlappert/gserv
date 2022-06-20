@@ -87,7 +87,7 @@ func (r GenResponse[CodecT]) Cached() Response {
 	var c CodecT
 	var buf bytes.Buffer
 	oerrs.Try(c.Encode(&buf, r))
-	return &CachedResponse{ct: c.ContentType(), code: r.Status(), body: buf.Bytes()}
+	return &cachedResp{ct: c.ContentType(), code: r.Status(), body: buf.Bytes()}
 }
 
 // ErrorList returns an errors.ErrorList of this response's errors or nil.
