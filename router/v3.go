@@ -71,7 +71,7 @@ func (n *Route) WithDoc(desc string, genParams bool) *SwaggerRoute {
 	sr := &SwaggerRoute{
 		Description: desc,
 	}
-	sr.Description = desc
+
 	if genParams {
 		for _, p := range n.parts {
 			if p[0] == ':' || p[0] == '*' {
@@ -79,7 +79,7 @@ func (n *Route) WithDoc(desc string, genParams bool) *SwaggerRoute {
 			}
 		}
 	}
-	n.r.addRouteInfo(n.m, n.fp, n.parts, sr)
+	n.r.addRouteInfo(n.m, n.fp, sr)
 	return sr
 }
 
@@ -155,7 +155,7 @@ func (r *Router) AddRoute(group, method, route string, h Handler) *Route {
 
 // AddRoute adds a Handler to the specific method and route.
 // Calling AddRoute after starting the http server is racy and not supported.
-func (r *Router) AddRouteWithDesc(group, method, route string, h Handler, desc *SwaggerRoute) *Route {
+func (r *Router) AddRouteWithDesc(group, method, route string, h Handler, desc string) *Route {
 	p, rest, num, stars := splitPathToParts(route)
 	if stars > 1 {
 		panic(tooManyStars)
@@ -177,8 +177,8 @@ func (r *Router) AddRouteWithDesc(group, method, route string, h Handler, desc *
 		r.maxParams = num
 	}
 
-	if desc == nil && r.opts.AutoGenerateSwagger && !strings.Contains(route, "swagger") && !strings.Contains(route, "openapi") {
-		r.addRouteInfo(method, route, rest, desc)
+	if desc != "" && r.opts.AutoGenerateSwagger {
+		n.WithDoc(desc, r.opts.AutoGenerateSwagger)
 	}
 	return n
 }

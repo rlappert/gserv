@@ -112,7 +112,7 @@ func (sr *SwaggerRoute) WithParam(name, desc, in, typ string, required bool, sch
 	return sr
 }
 
-func (r *Router) addRouteInfo(method, path string, params []nodePart, desc *SwaggerRoute) {
+func (r *Router) addRouteInfo(method, path string, desc *SwaggerRoute) *SwaggerRoute {
 	p := r.swagger.Paths
 	if p == nil {
 		p = SwaggerPath{}
@@ -128,22 +128,8 @@ func (r *Router) addRouteInfo(method, path string, params []nodePart, desc *Swag
 	if desc == nil {
 		desc = &SwaggerRoute{}
 	}
-	if desc.Parameters == nil {
-		desc.Parameters = make([]*SwaggerParam, 0, len(params))
-	L:
-		for _, p := range params {
-			if c := p[0]; c == ':' || c == '*' {
-				for _, dp := range desc.Parameters {
-					if dp.Name == string(p) {
-						continue L
-					}
-				}
-				desc.Parameters = append(desc.Parameters, &SwaggerParam{Name: string(p), In: "path", Required: true})
-			}
-		}
-	}
-
 	m[strings.ToLower(method)] = desc
+	return desc
 }
 
 func (r *Router) Swagger() *Swagger {
