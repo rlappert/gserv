@@ -4,9 +4,9 @@ import "strings"
 
 type Swagger struct {
 	OpenAPI string          `json:"openAPI,omitempty" yaml:"openAPI,omitempty"`
-	Server  []swaggerServer `json:"server,omitempty" yaml:"server,omitempty"`
+	Server  []SwaggerServer `json:"server,omitempty" yaml:"server,omitempty"`
 	Info    *SwaggerInfo    `json:"info,omitempty" yaml:"info,omitempty"`
-	Paths   swaggerPath     `json:"paths,omitempty" yaml:"paths,omitempty"`
+	Paths   SwaggerPath     `json:"paths,omitempty" yaml:"paths,omitempty"`
 }
 
 type SwaggerInfo struct {
@@ -15,13 +15,13 @@ type SwaggerInfo struct {
 	Version     string `json:"version,omitempty" yaml:"version,omitempty"`
 }
 
-type swaggerServer struct {
+type SwaggerServer struct {
 	URL         string `json:"url,omitempty" yaml:"url,omitempty"`
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 }
 
 // ....................path.......method
-type swaggerPath = map[string]map[string]*SwaggerRoute
+type SwaggerPath = map[string]map[string]*SwaggerRoute
 
 type SwaggerParam struct {
 	Name            string         `json:"name,omitempty" yaml:"name,omitempty"`
@@ -115,7 +115,7 @@ func (sr *SwaggerRoute) WithParam(name, desc, in, typ string, required bool, sch
 func (r *Router) addRouteInfo(method, path string, params []nodePart, desc *SwaggerRoute) {
 	p := r.swagger.Paths
 	if p == nil {
-		p = swaggerPath{}
+		p = SwaggerPath{}
 		r.swagger.Paths = p
 	}
 

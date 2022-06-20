@@ -44,6 +44,7 @@ func CachedResponse(code int, contentType string, body any) Response {
 	if body == nil && code != http.StatusNoContent {
 		body = http.StatusText(code)
 	}
+
 	var b []byte
 	switch v := body.(type) {
 	case nil:
@@ -60,6 +61,7 @@ func CachedResponse(code int, contentType string, body any) Response {
 	default:
 		v = otk.UnsafeBytes(fmt.Sprintf("%v", v))
 	}
+
 	return &cachedResp{
 		ct:   contentType,
 		body: b,
