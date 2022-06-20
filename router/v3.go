@@ -22,6 +22,7 @@ type Options struct {
 	CatchPanics              bool // don't catch panics
 	NoAutoHeadToGet          bool // disable automatically handling HEAD requests
 	ProfileLabels            bool
+	AutoGenerateSwagger      bool
 }
 
 const (
@@ -31,23 +32,64 @@ const (
 	starNotLast = "star param must be the last part of the path"
 )
 
-type node struct {
+type Route struct {
+	r     *Router
+	m     string
 	g     string
+	fp    string
 	h     Handler
 	parts []nodePart
 }
 
-func (n node) hasStar() bool {
+func (n *Route) hasStar() bool {
 	return len(n.parts) > 0 && n.parts[len(n.parts)-1].Type() == '*'
 }
 
-type routeMap map[string][]node
+func (n *Route) paramLen() (out int) {
+	for _, p := range n.parts {
+		if t := p.Type(); t == ':' || t == '*' {
+			out++
+		}
+	}
+	return
+}
 
-func (rm routeMap) get(path string) []node {
+func (n *Route) getPartName(i int) (np string, pi int) {
+	for i < len(n.parts) {
+		np = string(n.parts[i])
+		pi++
+		if t := np[0]; t != '*' && t != ':' {
+			continue
+		}
+		np = np[1:]
+		break
+	}
+	return
+}
+
+func (n *Route) WithDoc(desc string, genParams bool) *SwaggerRoute {
+	sr := &SwaggerRoute{
+		Description: desc,
+	}
+	sr.Description = desc
+	if genParams {
+		for _, p := range n.parts {
+			if p[0] == ':' || p[0] == '*' {
+				sr = sr.WithParam(p.Name(), p.String()+" is required", "path", "string", true, nil)
+			}
+		}
+	}
+	n.r.addRouteInfo(n.m, n.fp, n.parts, sr)
+	return sr
+}
+
+type routeMap map[string][]*Route
+
+func (rm routeMap) get(path string) []*Route {
 	return rm[path]
 }
 
-func (rm routeMap) append(path string, n node) {
+func (rm routeMap) append(path string, n *Route) {
 	rm[path] = append(rm[path], n)
 }
 
@@ -107,13 +149,13 @@ func (r *Router) GetRoutes() [][3]string {
 
 // AddRoute adds a Handler to the specific method and route.
 // Calling AddRoute after starting the http server is racy and not supported.
-func (r *Router) AddRoute(group, method, route string, h Handler) {
-	r.AddRouteWithDesc(group, method, route, h, nil)
+func (r *Router) AddRoute(group, method, route string, h Handler) *Route {
+	return r.AddRouteWithDesc(group, method, route, h, nil)
 }
 
 // AddRoute adds a Handler to the specific method and route.
 // Calling AddRoute after starting the http server is racy and not supported.
-func (r *Router) AddRouteWithDesc(group, method, route string, h Handler, desc *SwaggerRoute) {
+func (r *Router) AddRouteWithDesc(group, method, route string, h Handler, desc *SwaggerRoute) *Route {
 	p, rest, num, stars := splitPathToParts(route)
 	if stars > 1 {
 		panic(tooManyStars)
@@ -128,15 +170,17 @@ func (r *Router) AddRouteWithDesc(group, method, route string, h Handler, desc *
 	}
 
 	m := r.getMap(method, true)
-	m.append(p, node{g: group, h: h, parts: rest})
+	n := &Route{r: r, fp: route, g: group, m: method, h: h, parts: rest}
+	m.append(p, n)
 
 	if num > r.maxParams {
 		r.maxParams = num
 	}
 
-	if !strings.Contains(route, "swagger") && !strings.Contains(route, "openapi") {
+	if desc == nil && r.opts.AutoGenerateSwagger && !strings.Contains(route, "swagger") && !strings.Contains(route, "openapi") {
 		r.addRouteInfo(method, route, rest, desc)
 	}
+	return n
 }
 
 // Match matches a method and path to a handler.
@@ -154,8 +198,8 @@ func (r *Router) Match(method, path string) (group string, handler Handler, para
 func (r *Router) match(method, path string) (group string, handler Handler, params *paramsWrapper) {
 	m := r.getMap(method, false)
 	var (
-		nn   []node
-		rn   node
+		nn   []*Route
+		rn   *Route
 		nsep int
 	)
 
@@ -182,7 +226,7 @@ func (r *Router) match(method, path string) (group string, handler Handler, para
 		}
 	}
 
-	if len(rn.parts) == 0 {
+	if rn == nil || len(rn.parts) == 0 {
 		return
 	}
 

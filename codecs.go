@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"go.oneofone.dev/genh"
-	"go.oneofone.dev/otk"
 )
 
 // Common mime-types
@@ -40,7 +39,7 @@ type Decoder interface {
 type Codec interface {
 	ContentType() string
 	Decode(r io.Reader, body any) error
-	Encode(w io.Writer, v any, err error) error
+	Encode(w io.Writer, v any) error
 }
 
 type PlainTextCodec struct{}
@@ -62,17 +61,7 @@ func (PlainTextCodec) Decode(r io.Reader, out any) error {
 	return err
 }
 
-func (PlainTextCodec) Encode(w io.Writer, v any, err error) (err2 error) {
-	if err != nil {
-		err := getError(err)
-		if rw, ok := w.(http.ResponseWriter); ok {
-			http.Error(rw, err.Error(), err.Status())
-		} else {
-			w.Write(otk.UnsafeBytes(err.Error()))
-		}
-		return nil
-	}
-
+func (PlainTextCodec) Encode(w io.Writer, v any) (err2 error) {
 	switch v := v.(type) {
 	case string:
 		_, err2 = io.WriteString(w, v)
@@ -94,19 +83,13 @@ func (JSONCodec) Decode(r io.Reader, out any) error {
 	return json.NewDecoder(r).Decode(&out)
 }
 
-func (j JSONCodec) Encode(w io.Writer, v any, err error) error {
+func (j JSONCodec) Encode(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	if j.Indent {
 		enc.SetIndent("", "\t")
 	}
-	if err == nil {
-		return enc.Encode(v)
-	}
-	e := getError(err)
-	if rw, ok := w.(http.ResponseWriter); ok {
-		rw.WriteHeader(e.Status())
-	}
-	return enc.Encode(e)
+
+	return enc.Encode(v)
 }
 
 type MsgpCodec struct{}
@@ -117,16 +100,8 @@ func (MsgpCodec) Decode(r io.Reader, out any) error {
 	return genh.DecodeMsgpack(r, out)
 }
 
-func (c MsgpCodec) Encode(w io.Writer, v any, err error) error {
-	if err == nil {
-		return genh.EncodeMsgpack(w, v)
-	}
-
-	e := getError(err)
-	if rw, ok := w.(http.ResponseWriter); ok {
-		rw.WriteHeader(e.Status())
-	}
-	return genh.EncodeMsgpack(w, e)
+func (c MsgpCodec) Encode(w io.Writer, v any) error {
+	return genh.EncodeMsgpack(w, v)
 }
 
 type MixedCodec[Dec, Enc Codec] struct {
@@ -140,8 +115,8 @@ func (m MixedCodec[Dec, Enc]) Decode(r io.Reader, out any) error {
 	return m.dec.Decode(r, out)
 }
 
-func (m MixedCodec[Dec, Enc]) Encode(w io.Writer, v any, err error) error {
-	return m.enc.Encode(w, v, err)
+func (m MixedCodec[Dec, Enc]) Encode(w io.Writer, v any) error {
+	return m.enc.Encode(w, v)
 }
 
 func getError(err error) HTTPError {

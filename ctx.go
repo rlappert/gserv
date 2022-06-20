@@ -187,7 +187,7 @@ func (ctx *Context) Encode(code int, c Codec, v any) error {
 	if code > 0 {
 		ctx.WriteHeader(code)
 	}
-	return c.Encode(ctx, v, nil)
+	return c.Encode(ctx, v)
 }
 
 // ClientIP returns the current client ip, accounting for X-Real-Ip and X-forwarded-For headers as well.
