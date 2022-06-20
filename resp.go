@@ -1,7 +1,9 @@
 package gserv
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -34,13 +36,29 @@ type Response interface {
 	WriteToCtx(ctx *Context) error
 }
 
-func CachedResponse(code int, contentType string, body []byte) Response {
+func CachedResponse(code int, contentType string, body any) Response {
 	if body == nil && code != http.StatusNoContent {
-		body = []byte(http.StatusText(code))
+		body = http.StatusText(code)
+	}
+	var b []byte
+	switch v := body.(type) {
+	case nil:
+	case []byte:
+		b = v
+	case string:
+		b = otk.UnsafeBytes(v)
+	case fmt.Stringer:
+		b = otk.UnsafeBytes(v.String())
+	case io.Reader:
+		var buf bytes.Buffer
+		io.Copy(&buf, v)
+		b = buf.Bytes()
+	default:
+		v = otk.UnsafeBytes(fmt.Sprintf("%v", v))
 	}
 	return &cachedResp{
 		ct:   contentType,
-		body: body,
+		body: b,
 		code: code,
 	}
 }
