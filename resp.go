@@ -36,6 +36,10 @@ type Response interface {
 	WriteToCtx(ctx *Context) error
 }
 
+func PlainResponse(contentType, body string) Response {
+	return CachedResponse(http.StatusOK, contentType, body)
+}
+
 func CachedResponse(code int, contentType string, body any) Response {
 	if body == nil && code != http.StatusNoContent {
 		body = http.StatusText(code)
