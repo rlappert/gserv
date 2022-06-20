@@ -150,7 +150,7 @@ func (r *Router) GetRoutes() [][3]string {
 // AddRoute adds a Handler to the specific method and route.
 // Calling AddRoute after starting the http server is racy and not supported.
 func (r *Router) AddRoute(group, method, route string, h Handler) *Route {
-	return r.AddRouteWithDesc(group, method, route, h, nil)
+	return r.AddRouteWithDesc(group, method, route, h, "")
 }
 
 // AddRoute adds a Handler to the specific method and route.
