@@ -22,7 +22,9 @@ import (
 )
 
 var DefaultPanicHandler = func(ctx *Context, v any, fr *oerrs.Frame) {
-	resp := NewJSONErrorResponse(500, fmt.Sprintf("PANIC in %s %s: %v", ctx.Req.Method, ctx.Path(), v), fmt.Sprintf("at %s %s:%d", fr.Function, fr.File, fr.Line))
+	msg, info := fmt.Sprintf("PANIC in %s %s: %v", ctx.Req.Method, ctx.Path(), v), fmt.Sprintf("at %s %s:%d", fr.Function, fr.File, fr.Line)
+	ctx.Logf("%s (%s)", msg, info)
+	resp := NewJSONErrorResponse(500, msg, info)
 	ctx.Encode(nil, 500, resp)
 }
 
