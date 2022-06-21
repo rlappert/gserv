@@ -16,9 +16,15 @@ import (
 	"time"
 
 	"go.oneofone.dev/gserv/router"
+	"go.oneofone.dev/oerrs"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
+
+var DefaultPanicHandler = func(ctx *Context, v any, fr *oerrs.Frame) {
+	resp := NewJSONErrorResponse(500, fmt.Sprintf("PANIC in %s %s: %v", ctx.Req.Method, ctx.Path(), v), fmt.Sprintf("at %s %s:%d", fr.Function, fr.File, fr.Line))
+	ctx.Encode(nil, 500, resp)
+}
 
 var noopLogger = log.New(io.Discard, "", 0)
 
@@ -57,22 +63,8 @@ func NewWithOpts(opts *Options) *Server {
 	ro := srv.opts.RouterOptions
 	srv.r = router.New(ro)
 
-	if ro != nil && ro.CatchPanics {
-		srv.r.PanicHandler = func(w http.ResponseWriter, req *http.Request, v any) {
-			srv.Logf("PANIC (%T): %v", v, v)
-			if h := srv.PanicHandler; h != nil {
-				ctx := getCtx(w, req, nil, srv)
-				h(ctx, v)
-				putCtx(ctx)
-				return
-			}
-
-			resp := NewJSONErrorResponse(http.StatusInternalServerError, fmt.Sprintf("PANIC (%T): %v", v, v))
-			resp.WriteToCtx(&Context{
-				Req:            req,
-				ResponseWriter: w,
-			})
-		}
+	if srv.opts.CatchPanics {
+		srv.PanicHandler = DefaultPanicHandler
 	}
 
 	srv.r.NotFoundHandler = func(w http.ResponseWriter, req *http.Request, p router.Params) {
@@ -94,12 +86,16 @@ func NewWithOpts(opts *Options) *Server {
 	return srv
 }
 
+type (
+	PanicHandler = func(ctx *Context, v any, fr *oerrs.Frame)
+)
+
 // Server is the main server
 type Server struct {
 	Group
 	r *router.Router
 
-	PanicHandler    func(ctx *Context, v any)
+	PanicHandler
 	NotFoundHandler func(ctx *Context)
 
 	servers    []*http.Server
