@@ -28,6 +28,7 @@ var testData = []struct {
 	{"/ping/world", NewJSONResponse("pong:world")},
 	{"/random", NewJSONErrorResponse(404)},
 	{"/panic", NewJSONErrorResponse(http.StatusInternalServerError, "PANIC in GET /panic: well... poo", "at go.oneofone.dev/gserv.TestServer.func2")},
+	{"/panic2", NewJSONErrorResponse(http.StatusInternalServerError, "PANIC in GET /panic2: well... poo", "at go.oneofone.dev/gserv.panicTyped")},
 	{"/mw/sub", NewJSONResponse("data:test")},
 }
 
@@ -85,6 +86,10 @@ func cmpData(a, b any) bool {
 
 var pong = "pong"
 
+func panicTyped(ctx *Context) (any, error) {
+	panic("well... poo")
+}
+
 func TestServer(t *testing.T) {
 	var srv *Server
 
@@ -99,7 +104,7 @@ func TestServer(t *testing.T) {
 	// 	r.WriteToCtx(ctx)
 	// }
 
-	JSONGet(&srv.Group, "/ping", func(ctx *Context) (string, error) {
+	JSONGet(srv, "/ping", func(ctx *Context) (string, error) {
 		// ctx.Logf("you wut m8: %v", ctx.ReqHeader())
 		return "pong", nil
 	})
@@ -108,9 +113,10 @@ func TestServer(t *testing.T) {
 		panic("well... poo")
 	})
 
+	JSONGet(srv, "/panic2", panicTyped)
 	srv.AllowCORS("/cors", "GET")
 
-	JSONGet(&srv.Group, "/ping/:id", func(ctx *Context) (string, error) {
+	JSONGet(srv, "/ping/:id", func(ctx *Context) (string, error) {
 		return "pong:" + ctx.Params.Get("id"), nil
 	})
 
@@ -118,7 +124,7 @@ func TestServer(t *testing.T) {
 		Ping string `json:"ping"`
 	}
 
-	JSONPost(&srv.Group, "/ping/:id", func(ctx *Context, req *PingReq) (string, error) {
+	JSONPost(srv, "/ping/:id", func(ctx *Context, req *PingReq) (string, error) {
 		return "pong:" + ctx.Params.Get("id") + ":" + req.Ping, nil
 	})
 
