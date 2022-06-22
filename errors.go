@@ -24,7 +24,7 @@ var (
 
 type Error struct {
 	Caller  *callerInfo `json:"caller,omitempty"`
-	Message string      `json:"error,omitempty"`
+	Message string      `json:"message,omitempty"`
 	Code    int         `json:"code,omitempty"`
 }
 
