@@ -77,10 +77,9 @@ func (r GenResponse[CodecT]) WriteToCtx(ctx *Context) error {
 
 	r.Success = r.Code >= http.StatusOK && r.Code < http.StatusBadRequest
 
-	ctx.WriteHeader(r.Code)
-
 	var c CodecT
 	ctx.SetContentType(c.ContentType())
+	ctx.WriteHeader(r.Code)
 
 	return c.Encode(ctx, &r)
 }
