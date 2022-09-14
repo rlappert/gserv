@@ -66,7 +66,7 @@ func newServerAndWait(t *testing.T, addr string) *Server {
 
 func TestErrors(t *testing.T) {
 	j, _ := json.Marshal(RespBadRequest)
-	if !strings.Contains(string(j), `"errors":[{"error":"Bad Request"}]`) {
+	if !strings.Contains(string(j), `"errors":[{"message":"Bad Request"}]`) {
 		t.Fatalf("bad marshal: %s", j)
 	}
 }

@@ -144,21 +144,43 @@ func (ctx *Context) CloseBody() error {
 // BindJSON parses the request's body as json, and closes the body.
 // Note that unlike gin.Context.Bind, this does NOT verify the fields using special tags.
 func (ctx *Context) BindJSON(out any) error {
-	return ctx.Bind(JSONCodec{}, out)
+	return ctx.BindCodec(JSONCodec{}, out)
 }
 
 // BindMsgpoack parses the request's body as msgpack, and closes the body.
 // Note that unlike gin.Context.Bind, this does NOT verify the fields using special tags.
 func (ctx *Context) BindMsgpack(out any) error {
-	return ctx.Bind(MsgpCodec{}, out)
+	return ctx.BindCodec(MsgpCodec{}, out)
 }
 
-// BindMsgPack parses the request's body as msgpack, and closes the body.
-// Note that unlike gin.Context.Bind, this does NOT verify the fields using special tags.
-func (ctx *Context) Bind(c Codec, out any) error {
+// BindCodec parses the request's body as msgpack, and closes the body.
+// Note that unlike gin.Context.BindCodec, this does NOT verify the fields using special tags.
+func (ctx *Context) BindCodec(c Codec, out any) error {
 	c = genh.FirstNonZero(c, ctx.Codec, DefaultCodec)
 	err := c.Decode(ctx, out)
 	ctx.CloseBody()
+	return err
+}
+
+// Bind parses the request's body as msgpack, and closes the body.
+// Note that unlike gin.Context.Bind, this does NOT verify the fields using special tags.
+func (ctx *Context) Bind(out any) error {
+	var c Codec
+	ct := ctx.ContentType()
+	switch {
+	case strings.Contains(ct, "json"):
+		c = JSONCodec{}
+	case strings.Contains(ct, "msgpack"):
+		c = MsgpCodec{}
+	default:
+		c = genh.FirstNonZero(ctx.Codec, DefaultCodec)
+	}
+
+	err := c.Decode(ctx, out)
+	ctx.CloseBody()
+	if err != nil {
+		err = oerrs.Errorf("error decoding (%s): %w", ct, err)
+	}
 	return err
 }
 
@@ -183,17 +205,38 @@ func (ctx *Context) Printf(code int, contentType, s string, args ...any) (int, e
 // JSON outputs a json object, it is highly recommended to return *Response rather than use this directly.
 // calling this function marks the Context as done, meaning any returned responses won't be written out.
 func (ctx *Context) JSON(code int, indent bool, v any) error {
-	return ctx.Encode(JSONCodec{indent}, code, v)
+	return ctx.EncodeCodec(JSONCodec{indent}, code, v)
 }
 
 // Msgpack outputs a msgp object, it is highly recommended to return *Response rather than use this directly.
 // calling this function marks the Context as done, meaning any returned responses won't be written out.
 func (ctx *Context) Msgpack(code int, v any) error {
-	return ctx.Encode(MsgpCodec{}, code, v)
+	return ctx.EncodeCodec(MsgpCodec{}, code, v)
 }
 
-func (ctx *Context) Encode(c Codec, code int, v any) error {
+func (ctx *Context) EncodeCodec(c Codec, code int, v any) error {
 	c = genh.FirstNonZero(c, ctx.Codec, DefaultCodec)
+	ctx.done = true
+	ctx.SetContentType(c.ContentType())
+
+	if code > 0 {
+		ctx.WriteHeader(code)
+	}
+	return c.Encode(ctx, v)
+}
+
+func (ctx *Context) Encode(code int, v any) error {
+	var c Codec
+	ct := ctx.ContentType()
+	switch {
+	case strings.Contains(ct, "json"):
+		c = JSONCodec{}
+	case strings.Contains(ct, "msgpack"):
+		c = MsgpCodec{}
+	default:
+		c = genh.FirstNonZero(ctx.Codec, DefaultCodec)
+	}
+
 	ctx.done = true
 	ctx.SetContentType(c.ContentType())
 
