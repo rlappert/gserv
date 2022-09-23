@@ -41,6 +41,17 @@ type SwaggerDesc struct {
 	ExternalValue string `json:"externalValue,omitempty" yaml:"externalValue,omitempty"`
 }
 
+type SwaggerRequestBodyContent struct {
+	Example  string                  `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples map[string]*SwaggerDesc `json:"examples,omitempty" yaml:"examples,omitempty"`
+}
+
+type SwaggerRequestBody struct {
+	Description string                                `json:"description,omitempty" yaml:"description,omitempty"`
+	Content     map[string]*SwaggerRequestBodyContent `json:"content,omitempty" yaml:"value,omitempty"`
+	Required    bool                                  `json:"required,omitempty" yaml:"required,omitempty"`
+}
+
 type SwaggerRoute struct {
 	OperationID string          `json:"operationID,omitempty" yaml:"operationID,omitempty"`
 	Summary     string          `json:"summary,omitempty" yaml:"summary,omitempty"`
@@ -48,8 +59,9 @@ type SwaggerRoute struct {
 	Tags        []string        `json:"tags,omitempty" yaml:"tags,omitempty"`
 	Parameters  []*SwaggerParam `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 
-	Responses map[string]*SwaggerDesc `json:"responses,omitempty" yaml:"responses,omitempty"`
-	Examples  map[string]*SwaggerDesc `json:"examples,omitempty" yaml:"examples,omitempty"`
+	RequestBody *SwaggerRequestBody     `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
+	Responses   map[string]*SwaggerDesc `json:"responses,omitempty" yaml:"responses,omitempty"`
+	Examples    map[string]*SwaggerDesc `json:"examples,omitempty" yaml:"examples,omitempty"`
 }
 
 func (sr *SwaggerRoute) WithOperationID(v string) *SwaggerRoute {
@@ -69,6 +81,24 @@ func (sr *SwaggerRoute) WithDescription(v string) *SwaggerRoute {
 
 func (sr *SwaggerRoute) WithTags(v ...string) *SwaggerRoute {
 	sr.Tags = append(sr.Tags, v...)
+	return sr
+}
+
+func (sr *SwaggerRoute) WithBody(contentType string, ex string) *SwaggerRoute {
+	if sr.RequestBody == nil {
+		sr.RequestBody = &SwaggerRequestBody{}
+	}
+	rbc := sr.RequestBody.Content
+	if rbc == nil {
+		rbc = map[string]*SwaggerRequestBodyContent{}
+		sr.RequestBody.Content = rbc
+	}
+	v := rbc[contentType]
+	if v == nil {
+		v = &SwaggerRequestBodyContent{}
+		rbc[contentType] = v
+	}
+	v.Example = ex
 	return sr
 }
 
