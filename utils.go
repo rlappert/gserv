@@ -1,6 +1,8 @@
 package gserv
 
 import (
+	"crypto/tls"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -8,6 +10,7 @@ import (
 	"time"
 
 	"go.oneofone.dev/gserv/internal"
+	"golang.org/x/net/http2"
 )
 
 var nukeCookieDate = time.Date(1991, time.August, 6, 0, 0, 0, 0, time.UTC)
@@ -193,4 +196,15 @@ func (me MultiError) Error() string {
 	}
 
 	return "multiple errors returned:\n\t" + strings.Join(errs, "\n\t")
+}
+
+func H2Client() *http.Client {
+	return &http.Client{
+		Transport: &http2.Transport{
+			AllowHTTP: true,
+			DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+				return net.Dial(network, addr)
+			},
+		},
+	}
 }
