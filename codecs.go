@@ -94,7 +94,7 @@ func (j JSONCodec) Encode(w io.Writer, v any) error {
 
 type MsgpCodec struct{}
 
-func (MsgpCodec) ContentType() string { return MimeJSON }
+func (MsgpCodec) ContentType() string { return MimeMsgPack }
 
 func (MsgpCodec) Decode(r io.Reader, out any) error {
 	return genh.DecodeMsgpack(r, out)
