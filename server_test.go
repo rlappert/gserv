@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"go.oneofone.dev/gserv/router"
 	"go.oneofone.dev/otk"
 )
 
@@ -29,7 +30,7 @@ var testData = []struct {
 	{"/random", NewJSONErrorResponse(404)},
 	{"/panic", NewJSONErrorResponse(http.StatusInternalServerError, "PANIC in GET /panic: well... poo", "at go.oneofone.dev/gserv.TestServer.func2")},
 	{"/panic2", NewJSONErrorResponse(http.StatusInternalServerError, "PANIC in GET /panic2: well... poo", "at go.oneofone.dev/gserv.panicTyped")},
-	{"/mw/sub", NewJSONResponse("data:test")},
+	{"/mw/sub/id", NewJSONResponse("data:/mw/sub/:id")},
 }
 
 func newServerAndWait(t *testing.T, addr string) *Server {
@@ -125,6 +126,13 @@ func TestServer(t *testing.T) {
 	}
 
 	JSONPost(srv, "/ping/:id", func(ctx *Context, req *PingReq) (string, error) {
+		r := router.RouteFromRequest(ctx.Req)
+		if r == nil {
+			t.Fatal("couldn't get route from request")
+		}
+		if rp := r.Path(); rp != "/ping/:id" {
+			t.Fatalf("expected /ping/:id, got %s", rp)
+		}
 		return "pong:" + ctx.Params.Get("id") + ":" + req.Ping, nil
 	})
 
@@ -133,10 +141,14 @@ func TestServer(t *testing.T) {
 
 	srv.StaticFile("/README.md", "./router/README.md")
 
-	srv.SubGroup("", "/mw", func(ctx *Context) Response {
-		ctx.Set("data", "test")
+	srv.SubGroup("groupName", "/mw", func(ctx *Context) Response {
+		r := ctx.Route()
+		if r == nil {
+			t.Fatal("couldn't get route from request")
+		}
+		ctx.Set("data", r.Path())
 		return nil
-	}).GET("/sub", func(ctx *Context) Response {
+	}).GET("/sub/:id", func(ctx *Context) Response {
 		v, _ := ctx.Get("data").(string)
 		return NewJSONResponse("data:" + v)
 	})

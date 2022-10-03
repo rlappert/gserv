@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"runtime/pprof"
@@ -49,19 +50,19 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		w, method = &headRW{ResponseWriter: w}, http.MethodGet
 	}
 
-	if g, h, p := r.match(method, pathNoQuery(u)); h != nil {
+	if rn, p := r.match(method, pathNoQuery(u)); rn != nil {
 		if r.opts.ProfileLabels {
-			labels := pprof.Labels("group", g, "method", req.Method, "uri", req.RequestURI)
+			labels := pprof.Labels("group", rn.g, "method", req.Method, "uri", req.RequestURI)
 			ctx := pprof.WithLabels(req.Context(), labels)
 			pprof.SetGoroutineLabels(ctx)
 			req = req.WithContext(ctx)
 		}
-
-		h(w, req, p.Params())
+		req = req.WithContext(context.WithValue(req.Context(), routeCtxKey, rn))
+		rn.h(w, req, p.Params())
 		r.putParams(p)
 
 		if r.opts.OnRequestDone != nil {
-			r.opts.OnRequestDone(req.Context(), g, method, u, time.Since(start))
+			r.opts.OnRequestDone(req.Context(), rn.g, method, u, time.Since(start))
 		}
 
 		return

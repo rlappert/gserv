@@ -67,6 +67,18 @@ func (n *Route) getPartName(i int) (np string, pi int) {
 	return
 }
 
+func (r *Route) Path() string {
+	return r.fp
+}
+
+func (r *Route) Group() string {
+	return r.g
+}
+
+func (r *Route) Handler() Handler {
+	return r.h
+}
+
 func (n *Route) WithDoc(desc string, genParams bool) *SwaggerRoute {
 	sr := &SwaggerRoute{
 		Description: desc,
@@ -185,21 +197,20 @@ func (r *Router) AddRouteWithDesc(group, method, route string, h Handler, desc s
 
 // Match matches a method and path to a handler.
 // if METHOD == HEAD and there isn't a specific handler for it, it returns the GET handler for the path.
-func (r *Router) Match(method, path string) (group string, handler Handler, params Params) {
-	g, h, p := r.match(method, path)
+func (r *Router) Match(method, path string) (rn *Route, params Params) {
+	rr, p := r.match(method, path)
 
-	if h == nil && method == http.MethodHead && !r.opts.NoAutoHeadToGet {
-		g, h, p = r.match(http.MethodGet, path)
+	if rr == nil || rr.h == nil && method == http.MethodHead && !r.opts.NoAutoHeadToGet {
+		rr, p = r.match(http.MethodGet, path)
 	}
 
-	return g, h, p.Params()
+	return rr, p.Params()
 }
 
-func (r *Router) match(method, path string) (group string, handler Handler, params *paramsWrapper) {
+func (r *Router) match(method, path string) (rn *Route, params *paramsWrapper) {
 	m := r.getMap(method, false)
 	var (
 		nn   []*Route
-		rn   *Route
 		nsep int
 	)
 
@@ -221,7 +232,6 @@ func (r *Router) match(method, path string) (group string, handler Handler, para
 	for _, n := range nn {
 		if len(n.parts) == nsep || n.hasStar() {
 			rn = n
-			group, handler = n.g, n.h
 			break
 		}
 	}

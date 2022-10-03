@@ -61,6 +61,10 @@ type Context struct {
 	done               bool
 }
 
+func (ctx *Context) Route() *router.Route {
+	return router.RouteFromRequest(ctx.Req)
+}
+
 // Param is a shorthand for ctx.Params.Get(name).
 func (ctx *Context) Param(key string) string {
 	return ctx.Params.Get(key)
@@ -303,7 +307,7 @@ func (ctx *Context) WriteHeader(s int) {
 	if ctx.status = s; ctx.hijackServeContent && ctx.status >= http.StatusBadRequest {
 		return
 	}
-	
+
 	ctx.ResponseWriter.WriteHeader(s)
 }
 

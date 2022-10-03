@@ -28,14 +28,14 @@ func TestRouterStar(t *testing.T) {
 	fn := func(_ http.ResponseWriter, req *http.Request, p Params) {}
 	r.AddRoute("", "GET", "/home", nil)
 	r.AddRoute("", "GET", "/home/*path", fn)
-	if _, h, p := r.Match("GET", "/home"); h != nil || len(p) != 0 {
-		t.Fatalf("expected a 0 match, got %v %v", h, len(p))
+	if rn, p := r.Match("GET", "/home"); rn == nil || len(p) != 0 {
+		t.Fatalf("expected a match, got %v %v", rn, len(p))
 	}
-	if _, h, p := r.Match("GET", "/home/file"); h == nil || len(p) != 1 || p.Get("path") != "file" {
-		t.Fatalf("expected a 1 match, got %v %v", h, p)
+	if rn, p := r.Match("GET", "/home/file"); rn == nil || len(p) != 1 || p.Get("path") != "file" {
+		t.Fatalf("expected a 1 match, got %v %v", rn, p)
 	}
-	if _, h, p := r.Match("GET", "/home/file/file2/report.json"); h == nil || len(p) != 1 || p.Get("path") != "file/file2/report.json" {
-		t.Fatalf("expected a 1 match, got %v %v", h, p)
+	if rn, p := r.Match("GET", "/home/file/file2/report.json"); rn == nil || len(p) != 1 || p.Get("path") != "file/file2/report.json" {
+		t.Fatalf("expected a 1 match, got %v %v", rn, p)
 	}
 }
 
