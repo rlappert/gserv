@@ -200,7 +200,7 @@ func (r *Router) AddRouteWithDesc(group, method, route string, h Handler, desc s
 func (r *Router) Match(method, path string) (rn *Route, params Params) {
 	rr, p := r.match(method, path)
 
-	if rr == nil || rr.h == nil && method == http.MethodHead && !r.opts.NoAutoHeadToGet {
+	if rr == nil && method == http.MethodHead && !r.opts.NoAutoHeadToGet {
 		rr, p = r.match(http.MethodGet, path)
 	}
 
