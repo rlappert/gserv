@@ -21,7 +21,7 @@ func TestIssue12(t *testing.T) {
 			return RespNotFound.(*JSONResponse), nil
 		}
 		return NewJSONResponse(nil), nil
-	})
+	}, false)
 
 	resp, err := http.Get("http://" + s.Addrs()[0] + "/ping")
 	if err != nil {

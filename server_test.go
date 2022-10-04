@@ -108,18 +108,18 @@ func TestServer(t *testing.T) {
 	JSONGet(srv, "/ping", func(ctx *Context) (string, error) {
 		// ctx.Logf("you wut m8: %v", ctx.ReqHeader())
 		return "pong", nil
-	})
+	}, true)
 
 	srv.GET("/panic", func(ctx *Context) Response {
 		panic("well... poo")
 	})
 
-	JSONGet(srv, "/panic2", panicTyped)
+	JSONGet(srv, "/panic2", panicTyped, true)
 	srv.AllowCORS("/cors", "GET")
 
 	JSONGet(srv, "/ping/:id", func(ctx *Context) (string, error) {
 		return "pong:" + ctx.Params.Get("id"), nil
-	})
+	}, true)
 
 	type PingReq struct {
 		Ping string `json:"ping"`
@@ -134,7 +134,7 @@ func TestServer(t *testing.T) {
 			t.Fatalf("expected /ping/:id, got %s", rp)
 		}
 		return "pong:" + ctx.Params.Get("id") + ":" + req.Ping, nil
-	})
+	}, true)
 
 	srv.Static("/s/", "./", false)
 	srv.Static("/s-std/", "./", true)

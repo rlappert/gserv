@@ -16,16 +16,16 @@ func TestSecureCookie(t *testing.T) {
 
 	srv.Use(SecureCookie(bytes.Repeat([]byte("1"), 32), securecookie.GenerateRandomKey(32)))
 
-	JSONGet(&srv.Group, "/", func(ctx *Context) (any, error) {
+	JSONGet(srv, "/", func(ctx *Context) (any, error) {
 		ctx.SetCookie("cooookie", M{"stuff": "and things"}, "", false, time.Hour)
 		return nil, nil
-	})
+	}, true)
 
-	JSONGet(&srv.Group, "/cookie", func(ctx *Context) (M, error) {
+	JSONGet(srv, "/cookie", func(ctx *Context) (M, error) {
 		var m M
 		ctx.GetCookieValue("cooookie", &m)
 		return m, nil
-	})
+	}, true)
 
 	addr := srv.Addrs()[0]
 
