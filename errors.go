@@ -1,6 +1,7 @@
 package gserv
 
 import (
+	"fmt"
 	"net/http"
 
 	"go.oneofone.dev/otk"
@@ -34,10 +35,10 @@ type callerInfo struct {
 	Line int    `json:"line,omitempty"`
 }
 
-func NewError(status int, msg string) HTTPError {
+func NewError(status int, msg any) HTTPError {
 	e := Error{
 		Code:    status,
-		Message: msg,
+		Message: fmt.Sprint(msg),
 	}
 	return e
 }
