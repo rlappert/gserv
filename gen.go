@@ -1,6 +1,8 @@
 package gserv
 
 import (
+	"errors"
+	"io"
 	"net/http"
 )
 
@@ -70,6 +72,9 @@ func MsgpPatch[Req, Resp any, HandlerFn func(ctx *Context, reqBody Req) (resp Re
 
 func handleOutOnly[CodecT Codec, Resp any, HandlerFn func(ctx *Context) (resp Resp, err error)](g GroupType, method, path string, handler HandlerFn, wrapResp bool) Route {
 	var c CodecT
+	var resp Resp
+	_, respBytes := any(resp).([]byte)
+
 	return g.AddRoute(method, path, func(ctx *Context) Response {
 		resp, err := handler(ctx)
 		if err != nil {
@@ -84,6 +89,10 @@ func handleOutOnly[CodecT Codec, Resp any, HandlerFn func(ctx *Context) (resp Re
 		if wrapResp {
 			return NewResponse[CodecT](resp)
 		}
+		if respBytes {
+			ctx.Write(any(resp).([]byte))
+			return nil
+		}
 		c.Encode(ctx, resp)
 		return nil
 	})
@@ -91,33 +100,46 @@ func handleOutOnly[CodecT Codec, Resp any, HandlerFn func(ctx *Context) (resp Re
 
 func handleInOut[CodecT Codec, Req, Resp any, HandlerFn func(ctx *Context, reqBody Req) (resp Resp, err error)](g GroupType, method, path string, handler HandlerFn, wrapResp bool) Route {
 	var c CodecT
+	var req Req
+	var resp Resp
+	_, reqBytes := any(req).([]byte)
+	_, respBytes := any(resp).([]byte)
 	return g.AddRoute(method, path, func(ctx *Context) Response {
 		var body Req
-		if err := c.Decode(ctx.Req.Body, &body); err != nil {
-			err := getError(err)
-			if wrapResp {
-				return NewErrorResponse[CodecT](err.Status(), err)
+		if reqBytes {
+			b, err := io.ReadAll(ctx.Req.Body)
+			if err != nil {
+				return handleError[CodecT](ctx, err, wrapResp)
 			}
-			ctx.WriteHeader(err.Status())
-			c.Encode(ctx, getError(err))
-			return nil
+			*(any(&body).(*[]byte)) = b
+		} else if err := c.Decode(ctx.Req.Body, &body); err != nil && !errors.Is(err, io.EOF) {
+			return handleError[CodecT](ctx, err, wrapResp)
 		}
 
 		ctx.SetContentType(c.ContentType())
 		resp, err := handler(ctx, body)
 		if err != nil {
-			err := getError(err)
-			if wrapResp {
-				return NewErrorResponse[CodecT](err.Status(), err)
-			}
-			ctx.WriteHeader(err.Status())
-			c.Encode(ctx, getError(err))
-			return nil
+			return handleError[CodecT](ctx, err, wrapResp)
 		}
 		if wrapResp {
 			return NewResponse[CodecT](resp)
 		}
+		if respBytes {
+			ctx.Write(any(resp).([]byte))
+			return nil
+		}
 		c.Encode(ctx, resp)
 		return nil
 	})
+}
+
+func handleError[C Codec](ctx *Context, e error, wrapResp bool) Response {
+	var c C
+	err := getError(e)
+	if wrapResp {
+		return NewErrorResponse[C](err.Status(), err)
+	}
+	ctx.WriteHeader(err.Status())
+	c.Encode(ctx, getError(err))
+	return nil
 }
