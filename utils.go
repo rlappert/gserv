@@ -101,7 +101,7 @@ func (d noListingDir) Open(name string) (f http.File, err error) {
 // If headers is empty, it will respond with the requested headers.
 // If origins is empty, it will respond with the requested origin.
 // will automatically install an OPTIONS handler to each passed group.
-func AllowCORS(methods, headers, origins []string, groups ...Group) Handler {
+func AllowCORS(methods, headers, origins []string, groups ...*Group) Handler {
 	ms := strings.Join(methods, ", ")
 	hs := strings.Join(headers, ", ")
 
