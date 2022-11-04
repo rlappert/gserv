@@ -67,6 +67,11 @@ func (g *Group) DELETE(path string, handlers ...Handler) Route {
 	return g.AddRoute(http.MethodDelete, path, handlers...)
 }
 
+// OPTIONS is an alias for AddRoute("OPTIONS", path, handlers...).
+func (g *Group) OPTIONS(path string, handlers ...Handler) Route {
+	return g.AddRoute(http.MethodOptions, path, handlers...)
+}
+
 func (g *Group) Static(path, localPath string, allowListing bool) Route {
 	path = strings.TrimSuffix(path, "/")
 
