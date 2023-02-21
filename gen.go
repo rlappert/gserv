@@ -78,13 +78,7 @@ func handleOutOnly[CodecT Codec, Resp any, HandlerFn func(ctx *Context) (resp Re
 	return g.AddRoute(method, path, func(ctx *Context) Response {
 		resp, err := handler(ctx)
 		if err != nil {
-			err := getError(err)
-			if wrapResp {
-				return NewErrorResponse[CodecT](err.Status(), err)
-			}
-			ctx.WriteHeader(err.Status())
-			c.Encode(ctx, getError(err))
-			return nil
+			return handleError[CodecT](ctx, err, wrapResp)
 		}
 		if wrapResp {
 			return NewResponse[CodecT](resp)
