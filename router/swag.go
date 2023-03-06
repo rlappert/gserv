@@ -6,7 +6,7 @@ import (
 )
 
 type Swagger struct {
-	OpenAPI string          `json:"openAPI,omitempty" yaml:"openAPI,omitempty"`
+	OpenAPI string          `json:"openapi,omitempty" yaml:"openapi,omitempty"`
 	Server  []SwaggerServer `json:"server,omitempty" yaml:"server,omitempty"`
 	Info    *SwaggerInfo    `json:"info,omitempty" yaml:"info,omitempty"`
 	Paths   SwaggerPath     `json:"paths,omitempty" yaml:"paths,omitempty"`
