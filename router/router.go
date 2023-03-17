@@ -50,7 +50,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		w, method = &headRW{ResponseWriter: w}, http.MethodGet
 	}
 
-	if rn, p := r.match(method, pathNoQuery(u)); rn != nil && !rn.disabled {
+	if rn, p := r.match(method, pathNoQuery(u)); rn != nil && !rn.disabled.Load() {
 		if r.opts.ProfileLabels {
 			labels := pprof.Labels("group", rn.g, "method", req.Method, "uri", req.RequestURI)
 			ctx := pprof.WithLabels(req.Context(), labels)

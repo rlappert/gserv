@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -39,7 +40,7 @@ type Route struct {
 	fp       string
 	h        Handler
 	parts    []nodePart
-	disabled bool
+	disabled atomic.Bool
 }
 
 func (n *Route) hasStar() bool {
@@ -210,7 +211,7 @@ func (r *Router) Match(method, path string) (rn *Route, params Params) {
 
 func (r *Router) DisableRoute(method, path string, disabled bool) bool {
 	if rr, _ := r.Match(method, path); rr != nil {
-		rr.disabled = disabled
+		rr.disabled.Store(disabled)
 		return true
 	}
 	return false
