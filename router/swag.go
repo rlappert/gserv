@@ -28,25 +28,14 @@ type SwaggerServer struct {
 type SwaggerPath = map[string]map[string]*SwaggerRoute
 
 type SwaggerParam struct {
-	Name            string            `json:"name,omitempty" yaml:"name,omitempty"`
-	In              string            `json:"in,omitempty" yaml:"in,omitempty"`
-	Description     string            `json:"description,omitempty" yaml:"description,omitempty"`
-	Type            string            `json:"-" yaml:"-"`
-	Schema          map[string]string `json:"schema,omitempty" yaml:"schema,omitempty"`
-	Required        bool              `json:"required,omitempty" yaml:"required,omitempty"`
-	Deprecated      bool              `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
-	AllowEmptyValue bool              `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
-}
-
-type SwaggerParamInput struct {
-	Name            string `json:"name,omitempty" yaml:"name,omitempty"`
-	In              string `json:"in,omitempty" yaml:"in,omitempty"`
-	Description     string `json:"description,omitempty" yaml:"description,omitempty"`
-	Type            string `json:"-" yaml:"-"`
-	Schema          string `json:"schema,omitempty" yaml:"schema,omitempty"`
-	Required        bool   `json:"required,omitempty" yaml:"required,omitempty"`
-	Deprecated      bool   `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
-	AllowEmptyValue bool   `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
+	Name            string         `json:"name,omitempty" yaml:"name,omitempty"`
+	In              string         `json:"in,omitempty" yaml:"in,omitempty"`
+	Description     string         `json:"description,omitempty" yaml:"description,omitempty"`
+	Type            string         `json:"-" yaml:"-"`
+	Schema          map[string]any `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Required        bool           `json:"required,omitempty" yaml:"required,omitempty"`
+	Deprecated      bool           `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	AllowEmptyValue bool           `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
 }
 
 type SwaggerDefinition struct {
@@ -154,29 +143,13 @@ func (sr *SwaggerRoute) WithExample(name string, ex *SwaggerDesc) *SwaggerRoute 
 	return sr
 }
 
-func (sr *SwaggerRoute) WithParams(params []*SwaggerParamInput) *SwaggerRoute {
-	for _, p := range params {
-		var schema map[string]string
-		if p.Schema != "" {
-			schema = make(map[string]string)
-			schema["$ref"] = "#/definitions/" + p.Schema
-		}
-		sr.Parameters = append(sr.Parameters, &SwaggerParam{
-			Name:            p.Name,
-			In:              p.In,
-			Description:     p.Description,
-			Type:            p.Type,
-			Schema:          schema,
-			Required:        p.Required,
-			Deprecated:      p.Deprecated,
-			AllowEmptyValue: p.AllowEmptyValue,
-		})
-	}
+func (sr *SwaggerRoute) WithParams(params []*SwaggerParam) *SwaggerRoute {
+	sr.Parameters = append(sr.Parameters, params...)
 	return sr
 }
 
-func (sr *SwaggerRoute) WithParam(name, desc, in, typ string, required bool, schemaDef string) *SwaggerRoute {
-	p := SwaggerParam{Name: name, Description: desc, In: in, Schema: map[string]string{}, Required: required}
+func (sr *SwaggerRoute) WithParam(name, desc, in, typ string, required bool, schema map[string]any) *SwaggerRoute {
+	p := SwaggerParam{Name: name, Description: desc, In: in, Schema: schema, Required: required}
 	if p.In == "" {
 		p.In = "path"
 	}
@@ -185,8 +158,8 @@ func (sr *SwaggerRoute) WithParam(name, desc, in, typ string, required bool, sch
 		typ = "string"
 	}
 
-	if p.Schema != nil {
-		p.Schema["$ref"] = "#/definitions/" + schemaDef
+	if p.Schema == nil {
+		p.Schema = map[string]any{}
 	}
 	p.Schema["type"] = typ
 
