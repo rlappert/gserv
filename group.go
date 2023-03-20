@@ -72,6 +72,10 @@ func (g *Group) OPTIONS(path string, handlers ...Handler) Route {
 	return g.AddRoute(http.MethodOptions, path, handlers...)
 }
 
+func (g *Group) DisableRoute(method, path string, disabled bool) bool {
+	return g.s.r.DisableRoute(method, joinPath(g.path, path), disabled)
+}
+
 func (g *Group) Static(path, localPath string, allowListing bool) Route {
 	path = strings.TrimSuffix(path, "/")
 

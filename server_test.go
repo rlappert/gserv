@@ -31,6 +31,7 @@ var testData = []struct {
 	{"/panic", NewJSONErrorResponse(http.StatusInternalServerError, "PANIC in GET /panic: well... poo", "at go.oneofone.dev/gserv.TestServer.func2")},
 	{"/panic2", NewJSONErrorResponse(http.StatusInternalServerError, "PANIC in GET /panic2: well... poo", "at go.oneofone.dev/gserv.panicTyped")},
 	{"/mw/sub/id", NewJSONResponse("data:/mw/sub/:id")},
+	{"/mw/sub/disabled/id", NewJSONErrorResponse(404)},
 }
 
 func newServerAndWait(t *testing.T, addr string) *Server {
@@ -141,17 +142,27 @@ func TestServer(t *testing.T) {
 
 	srv.StaticFile("/README.md", "./router/README.md")
 
-	srv.SubGroup("groupName", "/mw", func(ctx *Context) Response {
+	sg := srv.SubGroup("groupName", "/mw", func(ctx *Context) Response {
 		r := ctx.Route()
 		if r == nil {
 			t.Fatal("couldn't get route from request")
 		}
 		ctx.Set("data", r.Path())
 		return nil
-	}).GET("/sub/:id", func(ctx *Context) Response {
+	})
+	sg.GET("/sub/:id", func(ctx *Context) Response {
 		v, _ := ctx.Get("data").(string)
 		return NewJSONResponse("data:" + v)
 	})
+
+	sg.GET("/sub/disabled/:id", func(ctx *Context) Response {
+		v, _ := ctx.Get("data").(string)
+		return NewJSONResponse("data:" + v)
+	})
+
+	if !srv.DisableRoute("GET", "/mw/sub/disabled/:id", true) {
+		t.Error("expected DisableRoute to return true")
+	}
 
 	//	srv.Use(LogRequests(true))
 
