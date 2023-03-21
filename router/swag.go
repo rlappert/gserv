@@ -28,24 +28,25 @@ type SwaggerServer struct {
 type SwaggerPath = map[string]map[string]*SwaggerRoute
 
 type SwaggerParam struct {
-	Name            string         `json:"name,omitempty" yaml:"name,omitempty"`
-	In              string         `json:"in,omitempty" yaml:"in,omitempty"`
-	Description     string         `json:"description,omitempty" yaml:"description,omitempty"`
-	Type            string         `json:"-" yaml:"-"`
-	Schema          map[string]any `json:"schema,omitempty" yaml:"schema,omitempty"`
-	Required        bool           `json:"required,omitempty" yaml:"required,omitempty"`
-	Deprecated      bool           `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
-	AllowEmptyValue bool           `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
+	Name            string             `json:"name,omitempty" yaml:"name,omitempty"`
+	In              string             `json:"in,omitempty" yaml:"in,omitempty"`
+	Description     string             `json:"description,omitempty" yaml:"description,omitempty"`
+	Type            string             `json:"-" yaml:"-"`
+	Schema          *SwaggerDefinition `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Required        bool               `json:"required,omitempty" yaml:"required,omitempty"`
+	Deprecated      bool               `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	AllowEmptyValue bool               `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
 }
 
 type SwaggerDefinition struct {
 	Type       string   `json:"type"`
 	Required   []string `json:"required"`
 	Properties any      `json:"properties"`
+	Items      any      `json:"items"`
 }
 
 type SwaggerDefinitionField struct {
-	Example string `json:"example,omitempty"`
+	Example any    `json:"example,omitempty"`
 	Type    string `json:"type,omitempty"`
 }
 
@@ -148,7 +149,7 @@ func (sr *SwaggerRoute) WithParams(params []*SwaggerParam) *SwaggerRoute {
 	return sr
 }
 
-func (sr *SwaggerRoute) WithParam(name, desc, in, typ string, required bool, schema map[string]any) *SwaggerRoute {
+func (sr *SwaggerRoute) WithParam(name, desc, in, typ string, required bool, schema *SwaggerDefinition) *SwaggerRoute {
 	p := SwaggerParam{Name: name, Description: desc, In: in, Schema: schema, Required: required}
 	if p.In == "" {
 		p.In = "path"
@@ -159,9 +160,9 @@ func (sr *SwaggerRoute) WithParam(name, desc, in, typ string, required bool, sch
 	}
 
 	if p.Schema == nil {
-		p.Schema = map[string]any{}
+		p.Schema = &SwaggerDefinition{}
 	}
-	p.Schema["type"] = typ
+	p.Schema.Type = typ
 
 	sr.Parameters = append(sr.Parameters, &p)
 	return sr
