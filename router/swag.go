@@ -39,10 +39,10 @@ type SwaggerParam struct {
 }
 
 type SwaggerDefinition struct {
-	Type       string   `json:"type"`
-	Required   []string `json:"required"`
-	Properties any      `json:"properties"`
-	Items      any      `json:"items"`
+	Type       string   `json:"type,omitempty"`
+	Required   []string `json:"required,omitempty"`
+	Properties any      `json:"properties,omitempty"`
+	Items      any      `json:"items,omitempty"`
 }
 
 type SwaggerDefinitionField struct {
