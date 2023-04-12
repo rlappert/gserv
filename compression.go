@@ -2,7 +2,7 @@ package gserv
 
 import (
 	"compress/gzip"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sync"
 )
@@ -19,7 +19,7 @@ const (
 
 var gzPool = sync.Pool{
 	New: func() any {
-		w := gzip.NewWriter(ioutil.Discard)
+		w := gzip.NewWriter(io.Discard)
 		return &gzipRW{nil, w, false}
 	},
 }

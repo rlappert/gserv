@@ -1,6 +1,7 @@
 package gserv
 
 import (
+	"bytes"
 	"crypto/tls"
 	"net"
 	"net/http"
@@ -207,4 +208,37 @@ func H2Client() *http.Client {
 			},
 		},
 	}
+}
+
+type DummyResponseWriter struct {
+	h   http.Header
+	buf bytes.Buffer
+	st  int
+}
+
+func (d *DummyResponseWriter) Header() http.Header {
+	if d.h == nil {
+		d.h = make(http.Header)
+	}
+	return d.h
+}
+
+func (d *DummyResponseWriter) Write(b []byte) (int, error) {
+	if d.buf.Len() == 0 {
+		d.WriteHeader(200)
+	}
+	return d.buf.Write(b)
+}
+
+func (d *DummyResponseWriter) WriteHeader(v int) {
+	d.st = v
+	d.h.Write(&d.buf)
+}
+
+func (d *DummyResponseWriter) Status() int {
+	return d.st
+}
+
+func (d *DummyResponseWriter) Bytes() []byte {
+	return d.buf.Bytes()
 }
