@@ -3,8 +3,6 @@ package router
 import (
 	"encoding/json"
 	"strings"
-
-	"go.oneofone.dev/genh"
 )
 
 type Swagger struct {
@@ -196,9 +194,8 @@ func (r *Router) addRouteInfo(method, path string, desc *SwaggerRoute) *SwaggerR
 	return desc
 }
 
-// Clone returns a copy of r.swagger.
 func (r *Router) Swagger() *Swagger {
-	return genh.Clone(&r.swagger, true)
+	return &r.swagger
 }
 
 /*
