@@ -90,6 +90,9 @@ func (ctx *Context) Get(key string) any {
 
 // Set sets a context value, useful in passing data to other handlers down the chain
 func (ctx *Context) Set(key string, val any) {
+	if ctx.data == nil {
+		ctx.data = make(M)
+	}
 	ctx.data[key] = val
 }
 
