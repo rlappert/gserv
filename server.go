@@ -134,6 +134,7 @@ func (s *Server) newHTTPServer(ctx context.Context, addr string, forceHTTP2 bool
 		ErrorLog:       lg,
 
 		BaseContext: func(net.Listener) context.Context { return ctx },
+		ConnContext: func(context.Context, net.Conn) context.Context { return ctx },
 	}
 }
 
