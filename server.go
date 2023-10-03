@@ -124,7 +124,7 @@ func (s *Server) newHTTPServer(ctx context.Context, addr string, forceHTTP2 bool
 		lg = noopLogger
 	}
 
-	return &http.Server{
+	srv := &http.Server{
 		Addr:    addr,
 		Handler: h,
 
@@ -136,6 +136,14 @@ func (s *Server) newHTTPServer(ctx context.Context, addr string, forceHTTP2 bool
 		BaseContext: func(net.Listener) context.Context { return ctx },
 		ConnContext: func(context.Context, net.Conn) context.Context { return ctx },
 	}
+
+	go func() {
+		<-ctx.Done()
+		srv.Shutdown(ctx)
+	}()
+
+	return srv
+
 }
 
 // Run starts the server on the specific address
