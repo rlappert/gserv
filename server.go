@@ -168,10 +168,9 @@ func (s *Server) Run(ctx context.Context, addr string) error {
 
 // CertPair is a pair of (cert, key) files to listen on TLS
 type CertPair struct {
-	CertFile string `json:"certFile"`
-	KeyFile  string `json:"keyFile"`
-	Cert     []byte `json:"cert"`
-	Key      []byte `json:"key"`
+	Cert  []byte   `json:"cert"`
+	Key   []byte   `json:"key"`
+	Roots [][]byte `json:"roots"`
 }
 
 // SetKeepAlivesEnabled controls whether HTTP keep-alives are enabled.

@@ -3,6 +3,7 @@ package gserv
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net/http"
 	"os"
@@ -115,15 +116,17 @@ func (s *Server) RunTLSAndAuto(ctx context.Context, certCacheDir string, certPai
 		HostPolicy: hpFn,
 	}
 
-	if certCacheDir == "" {
-		certCacheDir = "./autocert"
-	}
+	if hpFn != nil {
+		if certCacheDir == "" {
+			certCacheDir = "./autocert"
+		}
 
-	if err := os.MkdirAll(certCacheDir, 0o700); err != nil {
-		return fmt.Errorf("couldn't create cert cache dir (%s): %v", certCacheDir, err)
-	}
+		if err := os.MkdirAll(certCacheDir, 0o700); err != nil {
+			return fmt.Errorf("couldn't create cert cache dir (%s): %v", certCacheDir, err)
+		}
 
-	m.Cache = autocert.DirCache(certCacheDir)
+		m.Cache = autocert.DirCache(certCacheDir)
+	}
 
 	srv := s.newHTTPServer(ctx, ":https", false)
 
@@ -140,23 +143,28 @@ func (s *Server) RunTLSAndAuto(ctx context.Context, certCacheDir string, certPai
 	for _, cp := range certPairs {
 		var cert tls.Certificate
 		var err error
-		if len(cp.Cert) > 0 && len(cp.Key) > 0 {
-			cert, err = tls.X509KeyPair(cp.Cert, cp.Key)
-		} else {
-			cert, err = tls.LoadX509KeyPair(cp.CertFile, cp.KeyFile)
-		}
+		cert, err = tls.X509KeyPair(cp.Cert, cp.Key)
 		if err != nil {
-			return fmt.Errorf("%s: %v", cp.CertFile, err)
+			return err
 		}
 		cfg.Certificates = append(cfg.Certificates, cert)
+		if len(cp.Roots) > 0 {
+			if cfg.RootCAs == nil {
+				cfg.RootCAs = x509.NewCertPool()
+			}
+			for _, crt := range cp.Roots {
+				cfg.RootCAs.AppendCertsFromPEM(crt)
+			}
+		}
 	}
 
 	cfg.GetCertificate = func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-		crt, err := m.GetCertificate(hello)
-		if err == nil {
-			return crt, err
+		if hpFn != nil {
+			crt, err := m.GetCertificate(hello)
+			if err == nil {
+				return crt, err
+			}
 		}
-
 		// fallback to default impl tls impl
 		return nil, nil
 	}
