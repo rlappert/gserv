@@ -109,17 +109,15 @@ func (a *AutoCertHosts) IsAllowed(_ context.Context, host string) error {
 
 // RunTLSAndAuto allows using custom certificates and autocert together.
 // It will always listen on both :80 and :443
-func (s *Server) RunTLSAndAuto(ctx context.Context, certCacheDir string, certPairs []CertPair, hosts *AutoCertHosts) error {
+func (s *Server) RunTLSAndAuto(ctx context.Context, certCacheDir string, certPairs []CertPair, hpFn autocert.HostPolicy) error {
 	if hosts == nil {
 		return fmt.Errorf("gserv/autocert: hosts can't be nil")
 	}
 
 	m := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: hosts.IsAllowed,
+		HostPolicy: hpFn,
 	}
-
-	m.HostPolicy = hosts.IsAllowed
 
 	if certCacheDir == "" {
 		certCacheDir = "./autocert"
@@ -141,8 +139,6 @@ func (s *Server) RunTLSAndAuto(ctx context.Context, certCacheDir string, certPai
 			"h2", "http/1.1", // enable HTTP/2
 			acme.ALPNProto, // enable tls-alpn ACME challenges
 		},
-
-		GetCertificate: m.GetCertificate,
 	}
 
 	for _, cp := range certPairs {

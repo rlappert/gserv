@@ -1,6 +1,3 @@
-//go:build go1.9
-// +build go1.9
-
 package gserv
 
 import (
@@ -12,7 +9,7 @@ import (
 )
 
 // RunTLS starts the server on the specific address, using tls
-func (s *Server) RunTLS(addr string, certPairs []CertPair) error {
+func (s *Server) RunTLS(ctx context.Context, addr string, certPairs []CertPair) error {
 	cfg := tls.Config{RootCAs: x509.NewCertPool()}
 	cfg.Certificates = make([]tls.Certificate, 0, len(certPairs))
 
