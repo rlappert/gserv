@@ -1,23 +1,23 @@
 module go.oneofone.dev/gserv
 
-go 1.20
+go 1.21
 
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/gorilla/securecookie v1.1.1
-	go.oneofone.dev/genh v0.0.0-20230201195704-e48800481016
+	github.com/gorilla/securecookie v1.1.2
+	go.oneofone.dev/genh v0.0.0-20231018204829-f409a3fd4780
 	go.oneofone.dev/oerrs v1.0.6
 	go.oneofone.dev/otk v1.0.7
-	golang.org/x/crypto v0.14.0
-	golang.org/x/net v0.17.0
+	golang.org/x/crypto v0.17.0
+	golang.org/x/net v0.19.0
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
-	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
+	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	golang.org/x/image v0.13.1-0.20231007040805-240a51ac9f08 // indirect
-	golang.org/x/text v0.13.0 // indirect
-	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
+	golang.org/x/image v0.14.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 )
