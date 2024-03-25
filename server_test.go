@@ -5,10 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -28,8 +28,8 @@ var testData = []struct {
 	{"/ping", NewJSONResponse("pong")},
 	{"/ping/world", NewJSONResponse("pong:world")},
 	{"/random", NewJSONErrorResponse(404)},
-	{"/panic", NewJSONErrorResponse(http.StatusInternalServerError, "PANIC in GET /panic: well... poo", "at go.oneofone.dev/gserv.TestServer.func2")},
-	{"/panic2", NewJSONErrorResponse(http.StatusInternalServerError, "PANIC in GET /panic2: well... poo", "at go.oneofone.dev/gserv.panicTyped")},
+	{"/panic", NewJSONErrorResponse(http.StatusInternalServerError, "internal server error")},
+	{"/panic2", NewJSONErrorResponse(http.StatusInternalServerError, "internal server error")},
 	{"/mw/sub/id", NewJSONResponse("data:/mw/sub/:id")},
 	{"/mw/sub/disabled/id", NewJSONErrorResponse(404)},
 }
@@ -204,13 +204,13 @@ func TestServer(t *testing.T) {
 	}
 
 	t.Run("Static", func(t *testing.T) {
-		readme, _ := ioutil.ReadFile("./router/README.md")
+		readme, _ := os.ReadFile("./router/README.md")
 		res, err := http.Get(ts.URL + "/s/router/README.md")
 		if err != nil {
 			t.Error(err)
 		}
 
-		b, err := ioutil.ReadAll(res.Body)
+		b, err := io.ReadAll(res.Body)
 		res.Body.Close()
 		if err != nil {
 			t.Error(err)
@@ -226,7 +226,7 @@ func TestServer(t *testing.T) {
 			t.Error(err)
 		}
 
-		b, err = ioutil.ReadAll(res.Body)
+		b, err = io.ReadAll(res.Body)
 		res.Body.Close()
 		if err != nil {
 			t.Error(err)
@@ -242,7 +242,7 @@ func TestServer(t *testing.T) {
 			t.Error(err)
 		}
 
-		b, err = ioutil.ReadAll(res.Body)
+		b, err = io.ReadAll(res.Body)
 		res.Body.Close()
 		if err != nil {
 			t.Error(err)
@@ -258,7 +258,7 @@ func TestServer(t *testing.T) {
 			t.Error(err)
 		}
 
-		b, err = ioutil.ReadAll(res.Body)
+		b, err = io.ReadAll(res.Body)
 		res.Body.Close()
 		if err != nil {
 			t.Error(err)
@@ -274,7 +274,7 @@ func TestServer(t *testing.T) {
 			t.Error(err)
 		}
 
-		b, err = ioutil.ReadAll(res.Body)
+		b, err = io.ReadAll(res.Body)
 		res.Body.Close()
 		if err != nil {
 			t.Error(err)

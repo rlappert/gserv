@@ -3,6 +3,7 @@ package gserv
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net/http"
 	"os"
@@ -18,6 +19,18 @@ import (
 // certCacheDir is where the certificates will be cached, defaults to "./autocert".
 // Note that it must always run on *BOTH* ":80" and ":443" so the addr param is omitted.
 func (s *Server) RunAutoCert(ctx context.Context, certCacheDir string, domains ...string) error {
+	var hbFn autocert.HostPolicy
+	if len(domains) > 0 {
+		hbFn = autocert.HostWhitelist(domains...)
+	}
+
+	return s.RunAutoCertDyn(ctx, certCacheDir, hbFn)
+}
+
+// RunAutoCertDyn enables automatic support for LetsEncrypt, using a dynamic HostPolicy.
+// certCacheDir is where the certificates will be cached, defaults to "./autocert".
+// Note that it must always run on *BOTH* ":80" and ":443" so the addr param is omitted.
+func (s *Server) RunAutoCertDyn(ctx context.Context, certCacheDir string, hpFn autocert.HostPolicy) error {
 	if certCacheDir == "" {
 		certCacheDir = "./autocert"
 	}
@@ -27,12 +40,9 @@ func (s *Server) RunAutoCert(ctx context.Context, certCacheDir string, domains .
 	}
 
 	m := &autocert.Manager{
-		Prompt: autocert.AcceptTOS,
-		Cache:  autocert.DirCache(certCacheDir),
-	}
-
-	if len(domains) > 0 {
-		m.HostPolicy = autocert.HostWhitelist(domains...)
+		Prompt:     autocert.AcceptTOS,
+		Cache:      autocert.DirCache(certCacheDir),
+		HostPolicy: hpFn,
 	}
 
 	srv := s.newHTTPServer(ctx, ":https", false)
@@ -46,8 +56,8 @@ func (s *Server) RunAutoCert(ctx context.Context, certCacheDir string, domains .
 	s.serversMux.Unlock()
 
 	go func() {
-		if err := http.ListenAndServe(":80", m.HTTPHandler(nil)); err != nil {
-			s.Logf("gserv: autocert on :80 error: %v", err)
+		if err := http.ListenAndServe(":http", m.HTTPHandler(nil)); err != nil {
+			s.Logf("gserv: autocert on :http error: %v", err)
 		}
 	}()
 
@@ -61,8 +71,8 @@ func NewAutoCertHosts(hosts ...string) *AutoCertHosts {
 }
 
 type AutoCertHosts struct {
-	mux sync.RWMutex
 	m   map[string]struct{}
+	mux sync.RWMutex
 }
 
 func (a *AutoCertHosts) Set(hosts ...string) {
@@ -100,27 +110,23 @@ func (a *AutoCertHosts) IsAllowed(_ context.Context, host string) error {
 
 // RunTLSAndAuto allows using custom certificates and autocert together.
 // It will always listen on both :80 and :443
-func (s *Server) RunTLSAndAuto(ctx context.Context, certCacheDir string, certPairs []CertPair, hosts *AutoCertHosts) error {
-	if hosts == nil {
-		return fmt.Errorf("gserv/autocert: hosts can't be nil")
-	}
-
+func (s *Server) RunTLSAndAuto(ctx context.Context, certCacheDir string, certPairs []CertPair, hpFn autocert.HostPolicy) error {
 	m := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: hosts.IsAllowed,
+		HostPolicy: hpFn,
 	}
 
-	m.HostPolicy = hosts.IsAllowed
+	if hpFn != nil {
+		if certCacheDir == "" {
+			certCacheDir = "./autocert"
+		}
 
-	if certCacheDir == "" {
-		certCacheDir = "./autocert"
+		if err := os.MkdirAll(certCacheDir, 0o700); err != nil {
+			return fmt.Errorf("couldn't create cert cache dir (%s): %v", certCacheDir, err)
+		}
+
+		m.Cache = autocert.DirCache(certCacheDir)
 	}
-
-	if err := os.MkdirAll(certCacheDir, 0o700); err != nil {
-		return fmt.Errorf("couldn't create cert cache dir (%s): %v", certCacheDir, err)
-	}
-
-	m.Cache = autocert.DirCache(certCacheDir)
 
 	srv := s.newHTTPServer(ctx, ":https", false)
 
@@ -132,24 +138,33 @@ func (s *Server) RunTLSAndAuto(ctx context.Context, certCacheDir string, certPai
 			"h2", "http/1.1", // enable HTTP/2
 			acme.ALPNProto, // enable tls-alpn ACME challenges
 		},
-
-		GetCertificate: m.GetCertificate,
 	}
 
 	for _, cp := range certPairs {
-		cert, err := tls.LoadX509KeyPair(cp.CertFile, cp.KeyFile)
+		var cert tls.Certificate
+		var err error
+		cert, err = tls.X509KeyPair(cp.Cert, cp.Key)
 		if err != nil {
-			return fmt.Errorf("%s: %v", cp.CertFile, err)
+			return err
 		}
 		cfg.Certificates = append(cfg.Certificates, cert)
+		if len(cp.Roots) > 0 {
+			if cfg.RootCAs == nil {
+				cfg.RootCAs = x509.NewCertPool()
+			}
+			for _, crt := range cp.Roots {
+				cfg.RootCAs.AppendCertsFromPEM(crt)
+			}
+		}
 	}
 
 	cfg.GetCertificate = func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-		crt, err := m.GetCertificate(hello)
-		if err == nil {
-			return crt, err
+		if hpFn != nil {
+			crt, err := m.GetCertificate(hello)
+			if err == nil {
+				return crt, err
+			}
 		}
-
 		// fallback to default impl tls impl
 		return nil, nil
 	}

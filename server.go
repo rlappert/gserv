@@ -24,7 +24,7 @@ import (
 var DefaultPanicHandler = func(ctx *Context, v any, fr *oerrs.Frame) {
 	msg, info := fmt.Sprintf("PANIC in %s %s: %v", ctx.Req.Method, ctx.Path(), v), fmt.Sprintf("at %s %s:%d", fr.Function, fr.File, fr.Line)
 	ctx.Logf("%s (%s)", msg, info)
-	resp := NewJSONErrorResponse(500, msg, info)
+	resp := NewJSONErrorResponse(500, "internal server error")
 	ctx.Encode(500, resp)
 }
 
@@ -124,7 +124,7 @@ func (s *Server) newHTTPServer(ctx context.Context, addr string, forceHTTP2 bool
 		lg = noopLogger
 	}
 
-	return &http.Server{
+	srv := &http.Server{
 		Addr:    addr,
 		Handler: h,
 
@@ -134,7 +134,16 @@ func (s *Server) newHTTPServer(ctx context.Context, addr string, forceHTTP2 bool
 		ErrorLog:       lg,
 
 		BaseContext: func(net.Listener) context.Context { return ctx },
+		ConnContext: func(context.Context, net.Conn) context.Context { return ctx },
 	}
+
+	go func() {
+		<-ctx.Done()
+		srv.Shutdown(ctx)
+	}()
+
+	return srv
+
 }
 
 // Run starts the server on the specific address
@@ -159,8 +168,9 @@ func (s *Server) Run(ctx context.Context, addr string) error {
 
 // CertPair is a pair of (cert, key) files to listen on TLS
 type CertPair struct {
-	CertFile string `json:"certFile"`
-	KeyFile  string `json:"KeyFile"`
+	Cert  []byte   `json:"cert"`
+	Key   []byte   `json:"key"`
+	Roots [][]byte `json:"roots"`
 }
 
 // SetKeepAlivesEnabled controls whether HTTP keep-alives are enabled.
